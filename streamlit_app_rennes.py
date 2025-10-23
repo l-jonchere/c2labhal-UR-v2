@@ -450,6 +450,7 @@ def main():
         
         st.dataframe(result_df_rennes)
 
+        """
         # --- Export XML HAL pour les publications absentes de HAL ---
         # (nécessite hal_xml_export.py dans le même dossier)
 
@@ -509,6 +510,7 @@ def main():
                     st.session_state['publications_list'] = []
                     
                 st.session_state['publications_list'] = publications_list
+        """
   
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
@@ -521,6 +523,66 @@ def main():
                 mime="text/csv",
                 key=f"download_csv_{collection_a_chercher_rennes}"  # ✅ clé unique pour chaque labo
             )
+
+        # --- Export XML HAL pour les publications absentes de HAL ---
+        # (nécessite hal_xml_export.py dans le même dossier)
+
+        # Bouton pour déclencher l'export (récupération OpenAlex + génération XML + ZIP)
+        if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
+            publications_list = []
+
+            # Parcours du DataFrame et construction des métadonnées pour l'export
+            for _, row in result_df_rennes.iterrows():
+                statut = str(row.get("Statut_HAL", "")).strip()
+                # Adapter la condition si tu veux inclure d'autres statuts
+                if statut not in ["Hors HAL", "Pas de DOI valide", "Titre incorrect, probablement absent de HAL"]:
+                    continue
+
+                doi_value = str(row.get("doi", "") or "").strip()
+                # Si pas de DOI, on passe (tu peux adapter pour générer sans DOI si besoin)
+                if not doi_value:
+                    continue
+                    
+                # Récupération OpenAlex (si échec on continue proprement)
+                openalex_data = {}
+                try:
+                    openalex_data = get_openalex_data(doi_value) or {}
+                except Exception as e_openalex:
+                    st.warning(f"Erreur OpenAlex pour DOI {doi_value}: {e_openalex}")
+                    openalex_data = {}
+
+                # Extraction des auteurs/affiliations depuis OpenAlex (si dispo)
+                authors = []
+                try:
+                    if openalex_data:
+                        authors = extract_authors_from_openalex_json(openalex_data)
+                except Exception as e_extract:
+                    st.warning(f"Erreur extraction auteurs OpenAlex pour DOI {doi_value}: {e_extract}")
+                    authors = []
+                    
+                # Construction du dictionnaire attendu par generate_hal_xml()
+                pub_data = {
+                    "Title": row.get("Title", "") or (openalex_data.get("title") if isinstance(openalex_data, dict) else ""),
+                    "doi": doi_value,
+                    "publisher": (openalex_data.get("host_venue", {}) or {}).get("publisher", "") if isinstance(openalex_data, dict) else "",
+                    "Source title": (openalex_data.get("host_venue", {}) or {}).get("display_name", "") if isinstance(openalex_data, dict) else "",
+                    "Date": openalex_data.get("publication_year", "") if isinstance(openalex_data, dict) else row.get("Date", ""),
+                    "authors": authors,
+                    # Tu peux ajouter d'autres champs si tu veux (keywords, abstract, raw_affiliations globales...)
+                }
+
+                publications_list.append(pub_data)
+
+            # Si rien à exporter, informer l'utilisateur
+            if not publications_list:
+                st.info("Aucune publication 'Hors HAL' (avec DOI) trouvée à exporter en XML.")
+            else:
+                # --- Étape 1 : stocker les publications dans la session Streamlit ---
+                st.write("🔍 Nombre de publications prêtes à exporter :", len(publications_list))
+                if 'publications_list' not in st.session_state:
+                    st.session_state['publications_list'] = []
+                    
+                st.session_state['publications_list'] = publications_list
 
         # --- Export XML HAL (ZIP)---
         publications_list = result_df_rennes.to_dict(orient='records')
