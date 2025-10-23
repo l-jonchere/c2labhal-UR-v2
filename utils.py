@@ -985,3 +985,40 @@ def get_initial_form(normalised_author_name):
     elif len(name_parts) == 1: 
         return normalised_author_name 
     return "" 
+
+def extract_authors_from_openalex_json(openalex_json):
+    """Extrait les auteurs et affiliations d'un enregistrement OpenAlex."""
+    authors_list = []
+    if not openalex_json or "authorships" not in openalex_json:
+        return authors_list
+
+    for auth in openalex_json.get("authorships", []):
+        author_name = auth.get("raw_author_name") or ""
+        orcid = ""
+        if "author" in auth and auth["author"]:
+            orcid = auth["author"].get("orcid", "") or ""
+
+        # Extraire les affiliations brutes et structurées
+        raw_affiliations = []
+        ror_affiliations = []
+
+        for aff in auth.get("institutions", []):
+            raw_aff = aff.get("display_name")
+            if raw_aff:
+                raw_affiliations.append(raw_aff)
+            ror_val = aff.get("ror")
+            if ror_val:
+                ror_affiliations.append({
+                    "ror": ror_val,
+                    "org_name": aff.get("display_name", "")
+                })
+
+        authors_list.append({
+            "raw_author_name": author_name,
+            "orcid": orcid,
+            "raw_affiliations": raw_affiliations,
+            "ror_affiliations": ror_affiliations
+        })
+
+    return authors_list
+
