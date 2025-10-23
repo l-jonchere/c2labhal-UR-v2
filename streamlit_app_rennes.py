@@ -486,39 +486,56 @@ def main():
                 key=f"download_rennes_{collection_a_chercher_rennes}"
             )
 
-        # --- Export XML HAL expérimental ---
+        # --- Export XML HAL expérimental (seulement pour les pubs hors HAL) ---
         if not result_df_rennes.empty:
-            # Étape 1 : filtrer les publications non présentes dans HAL
-            publications_non_hal = result_df_rennes[
-            result_df_rennes["Statut_HAL"].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"])
-        ]
-            st.write(f"📚 {len(publications_non_hal)} publications identifiées comme absentes de HAL.")
-            
-            if not publications_non_hal.empty:
-                # Étape 2 : conversion en liste de dictionnaires
-                publications_list = publications_non_hal.to_dict(orient="records")
-                
-                # Étape 3 : bouton de génération du ZIP
-                if st.button("📦 Générer le ZIP des XML HAL", key=f"generate_zip_{collection_a_chercher_rennes}"):
-                    st.info("➡️ Bouton cliqué, démarrage de la génération du ZIP...")
-                    st.write(f"Nombre de publications à traiter : {len(publications_list)}")
-                    
-                    try:
-                        from hal_xml_export import generate_zip_from_xmls
-                        zip_buffer = generate_zip_from_xmls(publications_list)
-                        
-                        if zip_buffer:
-                            st.download_button(
-                                label=f"⬇️ Télécharger le fichier ZIP des XML HAL",
-                                data=zip_buffer,
-                                file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
-                                mime="application/zip",
-                                key=f"zip_download_{collection_a_chercher_rennes}"
-                            )
-                        else:
-                            st.warning("Aucun fichier ZIP n’a été généré (liste vide ou erreur).")
-                    except Exception as e:
-                        st.error(f"❌ Erreur pendant la génération du ZIP : {e}")
+            # debug : aperçu et compte
+            st.write("Aperçu (head) des résultats :", result_df_rennes.head())
+            st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
+
+            # Filtrer les publications hors HAL (adapter si tes statuts sont différents)
+            mask_non_hal = result_df_rennes['Statut_HAL'].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"]) if 'Statut_HAL' in result_df_rennes.columns else result_df_rennes.index == result_df_rennes.index
+            publications_non_hal = result_df_rennes[mask_non_hal]
+
+            st.write(f"📚 Publications identifiées comme absentes de HAL : {len(publications_non_hal)}")
+            if len(publications_non_hal) == 0:
+                st.info("Aucune publication à exporter en XML (toutes présentes dans HAL ou filtre différent).")
+
+            # Préparer la liste (liste de dicts)
+            publications_list = publications_non_hal.to_dict(orient='records')
+
+            # bouton générer (avec key unique)
+            if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_{collection_a_chercher_rennes}"):
+                st.info("➡️ Bouton cliqué : démarrage de la génération du ZIP...")
+                st.write(f"Nombre de publications à traiter : {len(publications_list)}")
+
+                try:
+                # debug : importer et afficher si la fonction existe
+                    from hal_xml_export import generate_zip_from_xmls
+                    st.write("generate_zip_from_xmls callable ? ", callable(generate_zip_from_xmls))
+
+                    zip_buffer = generate_zip_from_xmls(publications_list)
+
+                    if zip_buffer:
+                    # stocker les octets dans session_state pour survivre au rerun
+                        st.session_state['zip_buffer'] = zip_buffer.getvalue()
+                        st.success("✅ ZIP généré. Le bouton téléchargement apparaît ci-dessous.")
+                    else:
+                        st.warning("Aucun ZIP retourné par generate_zip_from_xmls (vérifier la fonction).")
+                except Exception as e:
+                    st.error(f"Erreur lors de la génération du ZIP : {e}")
+                    # log plus détaillé dans la console (si accessible)
+                    import traceback
+                    st.text(traceback.format_exc())
+
+            # Si ZIP existant, proposer download
+            if st.session_state.get('zip_buffer'):
+                st.download_button(
+                    label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                    data=st.session_state['zip_buffer'],
+                    file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
+                    mime="application/zip",
+                    key=f"download_zip_{collection_a_chercher_rennes}"
+                )
                              
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
