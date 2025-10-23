@@ -501,15 +501,30 @@ def main():
             if not publications_list:
                 st.info("Aucune publication 'Hors HAL' (avec DOI) trouvée à exporter en XML.")
             else:
-                # Génération du ZIP contenant tous les XML
-                zip_buffer = generate_zip_from_xmls(publications_list)
-                st.download_button(
-                    label=f"⬇️ Télécharger les XML HAL (ZIP) - {len(publications_list)} fichiers",
-                    data=zip_buffer,
-                    file_name=f"hal_exports_{collection_a_chercher_rennes.replace(' ','_')}.zip",
-                    mime="application/zip"
-                )
-        
+                # --- Étape 1 : stocker les publications dans la session Streamlit ---
+                if 'publications_list' not in st.session_state:
+                    st.session_state['publications_list'] = []
+                    
+                st.session_state['publications_list'] = publications_list
+
+                # --- Étape 2 : boutons de génération / téléchargement ZIP ---
+                if st.session_state.get('publications_list'):
+                    if st.button("📦 Générer les XML HAL (ZIP)"):
+                        with st.spinner("⏳ Génération du fichier ZIP..."):
+                            zip_buffer = generate_zip_from_xmls(st.session_state['publications_list'])
+                            st.session_state['zip_buffer'] = zip_buffer
+                            st.success("✅ Fichiers XML générés avec succès !")
+
+                    if 'zip_buffer' in st.session_state:
+                        st.download_button(
+                            label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                            data=st.session_state['zip_buffer'],
+                            file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
+                            mime="application/zip"
+                        )
+                else:
+                    st.warning("⚠️ Aucune publication à exporter pour le moment.")
+                    
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
