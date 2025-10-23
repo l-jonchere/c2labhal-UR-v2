@@ -519,13 +519,14 @@ def main():
                 data=csv_export_rennes_data,
                 file_name=output_filename_rennes_final,
                 mime="text/csv",
-                key=f"download_rennes_{collection_a_chercher_rennes}"
+                key=f"download_csv_{collection_a_chercher_rennes}"  # ✅ clé unique pour chaque labo
             )
 
             # --- Export XML HAL (ZIP) ---
             publications_list = result_df_rennes.to_dict(orient='records')
             
             if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
+                         key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
                 st.info(f"Préparation du ZIP pour {len(publications_list)} publications...")
                 from hal_xml_export import generate_zip_from_xmls
                 zip_buffer = generate_zip_from_xmls(publications_list)
@@ -535,7 +536,7 @@ def main():
                         data=zip_buffer,
                         file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
                         mime="application/zip",
-                        key="download_zip_button"
+                        key=f"download_zip_{collection_a_chercher_rennes}"  # ✅ clé unique
                     )
                 else:
                     st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
