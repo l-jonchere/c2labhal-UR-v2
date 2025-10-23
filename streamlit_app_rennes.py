@@ -15,7 +15,7 @@ from utils import (
 # Les constantes comme HAL_API_ENDPOINT sont utilisées par les fonctions dans utils.py
 
 # Importer les fonctions d'export XML
-from hal_xml_export import generate_zip_from_xmls
+from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json
 
 # --- Définition de la liste des laboratoires (spécifique à cette application) ---
 labos_list_rennes = [
