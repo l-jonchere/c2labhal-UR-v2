@@ -475,6 +475,7 @@ def main():
 
         # --- Export XML HAL pour les publications absentes de HAL ---
         # (nécessite hal_xml_export.py dans le même dossier)
+        """
 
         # Bouton pour déclencher l'export (récupération OpenAlex + génération XML + ZIP)
         if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
@@ -532,7 +533,8 @@ def main():
                     st.session_state['publications_list'] = []
                     
                 st.session_state['publications_list'] = publications_list
-  
+
+  """
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
@@ -545,8 +547,7 @@ def main():
                 key=f"download_csv_{collection_a_chercher_rennes}"  # ✅ clé unique pour chaque labo
             )
 
-        # --- Export XML HAL (ZIP)---
-        """
+        # --- Export XML HAL (ZIP)---   
         publications_list = result_df_rennes.to_dict(orient='records')
             
         if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental", key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
@@ -563,7 +564,6 @@ def main():
                 )
             else:
                 st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
-         """
 
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
