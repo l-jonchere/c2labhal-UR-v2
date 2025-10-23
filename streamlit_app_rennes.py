@@ -448,6 +448,8 @@ def main():
         # --- Export XML HAL (ZIP) ---
         # Nous construisons la liste de publications à partir du df résultat,
         # puis proposons la génération du ZIP (séparé du download pour éviter les reruns).
+        st.write("Aperçu des publications à exporter :", result_df_rennes.head())
+        st.write(f"Total : {len(result_df_rennes)} lignes")
         publications_list = result_df_rennes.to_dict(orient='records')
 
         # Générer le ZIP (bouton déclencheur, clé unique)
