@@ -174,6 +174,8 @@ def add_sidebar_menu():
 
 def main():
     st.set_page_config(page_title="c2LabHAL - Rennes", layout="wide")
+    st.session_state.setdefault('publications_list', [])
+    st.session_state.setdefault('zip_buffer', None)
     add_sidebar_menu() 
 
     st.title("🥎 c2LabHAL 2 - Version expérimentale Université de Rennes")
