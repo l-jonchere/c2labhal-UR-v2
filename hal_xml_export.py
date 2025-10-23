@@ -9,6 +9,11 @@ import streamlit as st
 # Utilitaires internes
 # ==============================
 
+def safe_str(value):
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value)
+
 def _safe_text(v):
     """Renvoie une chaîne sûre (jamais NaN, None, etc.) pour le XML."""
     if v is None:
