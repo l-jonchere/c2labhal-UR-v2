@@ -9,7 +9,7 @@ import io
 from utils import (
     get_scopus_data, get_openalex_data, get_pubmed_data, convert_to_dataframe,
     clean_doi, HalCollImporter, merge_rows_with_sources, get_authors_from_crossref,
-    check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo, extract_authors_from_openalex_json,
+    check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo,
     normalise, normalize_name, get_initial_form # normalise est utilisé par HalCollImporter et check_df
 )
 # Les constantes comme HAL_API_ENDPOINT sont utilisées par les fonctions dans utils.py
