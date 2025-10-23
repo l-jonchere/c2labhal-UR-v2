@@ -143,6 +143,7 @@ def generate_zip_from_xmls(publications_list):
     Génère un fichier ZIP en mémoire contenant un fichier XML par publication.
     Retourne un objet BytesIO prêt à être téléchargé.
     """
+    st.info(f"🧩 Fonction generate_zip_from_xmls appelée avec {len(publications_list)} publications.")
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
