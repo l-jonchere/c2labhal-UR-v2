@@ -522,23 +522,23 @@ def main():
                 key=f"download_csv_{collection_a_chercher_rennes}"  # ✅ clé unique pour chaque labo
             )
 
-            # --- Export XML HAL (ZIP) ---
-            publications_list = result_df_rennes.to_dict(orient='records')
+        # --- Export XML HAL (ZIP) ---
+        publications_list = result_df_rennes.to_dict(orient='records')
             
-            if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental", key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
-                st.info(f"Préparation du ZIP pour {len(publications_list)} publications...")
-                from hal_xml_export import generate_zip_from_xmls
-                zip_buffer = generate_zip_from_xmls(publications_list)
-                if zip_buffer:
-                    st.download_button(
-                        label="📦 Télécharger le fichier ZIP (HAL XML)",
-                        data=zip_buffer,
-                        file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
-                        mime="application/zip",
-                        key=f"download_zip_{collection_a_chercher_rennes}"  # ✅ clé unique
-                    )
-                else:
-                    st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
+        if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental", key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
+            st.info(f"Préparation du ZIP pour {len(publications_list)} publications...")
+            from hal_xml_export import generate_zip_from_xmls
+            zip_buffer = generate_zip_from_xmls(publications_list)
+            if zip_buffer:
+                st.download_button(
+                    label="📦 Télécharger le fichier ZIP (HAL XML)",
+                    data=zip_buffer,
+                    file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
+                    mime="application/zip",
+                    key=f"download_zip_{collection_a_chercher_rennes}"  # ✅ clé unique
+                )
+            else:
+                st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
 
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
