@@ -5,3 +5,5 @@ metapub
 regex 
 unidecode 
 langdetect
+lxml
+tqdm
