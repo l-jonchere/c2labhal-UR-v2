@@ -175,8 +175,9 @@ def main():
     st.set_page_config(page_title="c2LabHAL - Rennes", layout="wide")
     add_sidebar_menu() 
 
-    st.title("🥎 c2LabHAL - Version Université de Rennes")
-    st.subheader("Comparez les publications d’un laboratoire de l'Université de Rennes avec sa collection HAL")
+    st.title("🥎 c2LabHAL 2 - Version expérimentale Université de Rennes")
+    st.subheader("Comparez les publications d’un laboratoire de l'Université de Rennes avec sa collection HAL", divider=True)
+    st.subheader("🔥 Version expérimentale")
 
     labo_choisi_nom_rennes = st.selectbox(
         "Choisissez une collection HAL de laboratoire (Université de Rennes) :", 
