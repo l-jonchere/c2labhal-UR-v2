@@ -147,6 +147,7 @@ def generate_zip_from_xmls(publications_list):
     """Génère un ZIP contenant un fichier XML par publication HAL.
     Tolère les entrées sous forme de chaînes ou de dictionnaires incomplets.
     """
+    st.write(f"📦 Début de génération du ZIP pour {len(publications_list)} publications")
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
