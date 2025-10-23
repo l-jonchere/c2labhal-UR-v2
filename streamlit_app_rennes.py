@@ -526,7 +526,7 @@ def main():
             publications_list = result_df_rennes.to_dict(orient='records')
             
             if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
-                         key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
+                key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
                 st.info(f"Préparation du ZIP pour {len(publications_list)} publications...")
                 from hal_xml_export import generate_zip_from_xmls
                 zip_buffer = generate_zip_from_xmls(publications_list)
