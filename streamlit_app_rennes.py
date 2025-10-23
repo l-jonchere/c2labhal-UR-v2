@@ -450,7 +450,6 @@ def main():
         # --- Export XML HAL pour les publications absentes de HAL ---
         # (nécessite hal_xml_export.py dans le même dossier)
         from hal_xml_export import generate_zip_from_xmls
-        from utils import extract_authors_from_openalex_json, get_openalex_data
 
         # Filtrer les publications non présentes dans HAL
         not_in_hal_df = result_df_rennes[result_df_rennes["Statut_HAL"].isin(["Hors HAL", "Pas de DOI valide"])]
