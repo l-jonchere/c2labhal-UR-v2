@@ -9,13 +9,13 @@ import io
 from utils import (
     get_scopus_data, get_openalex_data, get_pubmed_data, convert_to_dataframe,
     clean_doi, HalCollImporter, merge_rows_with_sources, get_authors_from_crossref,
-    check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo, 
+    check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo, extract_authors_from_openalex_json,
     normalise, normalize_name, get_initial_form # normalise est utilisé par HalCollImporter et check_df
 )
 # Les constantes comme HAL_API_ENDPOINT sont utilisées par les fonctions dans utils.py
 
 # Importer les fonctions d'export XML
-from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json
+from hal_xml_export import generate_zip_from_xmls
 
 # --- Définition de la liste des laboratoires (spécifique à cette application) ---
 labos_list_rennes = [
