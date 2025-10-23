@@ -988,7 +988,7 @@ def get_initial_form(normalised_author_name):
     
 """
 def extract_authors_from_openalex_json(openalex_json):
-    """Extrait les auteurs et affiliations d'un enregistrement OpenAlex."""
+    Extrait les auteurs et affiliations d'un enregistrement OpenAlex.
     authors_list = []
     if not openalex_json or "authorships" not in openalex_json:
         return authors_list
