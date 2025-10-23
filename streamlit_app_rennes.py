@@ -16,7 +16,7 @@ from utils import (
 
 # Importer les fonctions d'export XML
 from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json
-from utils import extract_authors_from_openalex_json, get_openalex_data
+from utils import extract_authors_from_openalex_json
 
 # --- Définition de la liste des laboratoires (spécifique à cette application) ---
 labos_list_rennes = [
