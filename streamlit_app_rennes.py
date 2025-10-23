@@ -450,8 +450,6 @@ def main():
 
         # --- Export XML HAL pour les publications absentes de HAL ---
         # (nécessite hal_xml_export.py dans le même dossier)
-        from hal_xml_export import generate_zip_from_xmls
-        from utils import extract_authors_from_openalex_json, get_openalex_data
 
         # Bouton pour déclencher l'export (récupération OpenAlex + génération XML + ZIP)
         if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
