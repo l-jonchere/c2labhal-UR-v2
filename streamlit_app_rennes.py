@@ -9,7 +9,7 @@ import io
 from utils import (
     get_scopus_data, get_openalex_data, get_pubmed_data, convert_to_dataframe,
     clean_doi, HalCollImporter, merge_rows_with_sources, get_authors_from_crossref,
-    check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo,
+    check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo, extract_authors_from_openalex_json,
     normalise, normalize_name, get_initial_form # normalise est utilisé par HalCollImporter et check_df
 )
 # Les constantes comme HAL_API_ENDPOINT sont utilisées par les fonctions dans utils.py
@@ -475,7 +475,6 @@ def main():
 
         # --- Export XML HAL pour les publications absentes de HAL ---
         # (nécessite hal_xml_export.py dans le même dossier)
-        """
 
         # Bouton pour déclencher l'export (récupération OpenAlex + génération XML + ZIP)
         if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
@@ -534,7 +533,6 @@ def main():
                     
                 st.session_state['publications_list'] = publications_list
 
-  """
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
