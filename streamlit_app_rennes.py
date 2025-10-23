@@ -502,6 +502,7 @@ def main():
                 st.info("Aucune publication 'Hors HAL' (avec DOI) trouvée à exporter en XML.")
             else:
                 # --- Étape 1 : stocker les publications dans la session Streamlit ---
+                st.write("🔍 Nombre de publications prêtes à exporter :", len(publications_list))
                 if 'publications_list' not in st.session_state:
                     st.session_state['publications_list'] = []
                     
