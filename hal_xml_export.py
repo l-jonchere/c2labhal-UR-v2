@@ -144,18 +144,44 @@ def generate_hal_xml(pub_data):
 
 # --- Fonction 3 : génération d’un ZIP contenant tous les fichiers XML ---
 def generate_zip_from_xmls(publications_list):
-    """
-    Prend une liste de publications (avec leurs métadonnées) et renvoie un fichier ZIP en mémoire.
+    """Génère un ZIP contenant un fichier XML par publication HAL.
+    Tolère les entrées sous forme de chaînes ou de dictionnaires incomplets.
     """
     zip_buffer = io.BytesIO()
+
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for pub in publications_list:
+        for idx, pub in enumerate(publications_list):
             try:
-                xml_bytes = generate_hal_xml(pub)
-                safe_title = (pub.get("Title", "untitled") or "untitled").replace("/", "_")[:60]
-                xml_filename = f"{safe_title}.xml"
-                zip_file.writestr(xml_filename, xml_bytes)
+                # 🔹 Si pub est une chaîne (ex: le titre seul)
+                if isinstance(pub, str):
+                    pub_dict = {"Title": pub}
+                # 🔹 Si pub est un dictionnaire, on nettoie les NaN
+                elif isinstance(pub, dict):
+                    pub_dict = {k: ("" if pd.isna(v) else v) for k, v in pub.items()}
+                # 🔹 Sinon (objet inconnu)
+                else:
+                    st.warning(f"Élément inattendu à l'index {idx}: {type(pub)}")
+                    continue
+
+                # ✅ On génère le XML
+                xml_bytes = generate_hal_xml(pub_dict)
+
+                # 🔹 Nom du fichier : titre nettoyé
+                title_for_name = pub_dict.get("Title", f"publication_{idx}")
+                title_for_name = str(title_for_name).replace(" ", "_").replace("/", "_")[:80]
+                file_name = f"{title_for_name}.xml"
+
+                # ✅ Ajout au ZIP
+                zip_file.writestr(file_name, xml_bytes)
+
             except Exception as e:
-                st.warning(f"Erreur lors de la génération XML pour '{pub.get('Title', '')}': {e}")
+                # Si le XML échoue pour un article, on continue sans bloquer les autres
+                title_safe = (
+                    pub.get("Title", f"publication_{idx}")
+                    if isinstance(pub, dict)
+                    else str(pub)
+                )
+                st.warning(f"⚠️ Erreur lors de la génération XML pour '{title_safe}': {e}")
+
     zip_buffer.seek(0)
     return zip_buffer
