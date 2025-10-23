@@ -509,24 +509,6 @@ def main():
                     st.session_state['publications_list'] = []
                     
                 st.session_state['publications_list'] = publications_list
-
-                # --- Étape 2 : boutons de génération / téléchargement ZIP ---
-                if st.session_state.get('publications_list'):
-                    if st.button("📦 Générer les XML HAL (ZIP)"):
-                        with st.spinner("⏳ Génération du fichier ZIP..."):
-                            zip_buffer = generate_zip_from_xmls(st.session_state['publications_list'])
-                            st.session_state['zip_buffer'] = zip_buffer
-                            st.success("✅ Fichiers XML générés avec succès !")
-
-                    if 'zip_buffer' in st.session_state:
-                        st.download_button(
-                            label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                            data=st.session_state['zip_buffer'],
-                            file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
-                            mime="application/zip"
-                        )
-                else:
-                    st.warning("⚠️ Aucune publication à exporter pour le moment.")
                     
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
@@ -539,6 +521,24 @@ def main():
                 mime="text/csv",
                 key=f"download_rennes_{collection_a_chercher_rennes}"
             )
+
+            # --- Export XML HAL (ZIP) ---
+            publications_list = result_df_rennes.to_dict(orient='records')
+            
+            if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
+                st.info(f"Préparation du ZIP pour {len(publications_list)} publications...")
+                from hal_xml_export import generate_zip_from_xmls
+                zip_buffer = generate_zip_from_xmls(publications_list)
+                if zip_buffer:
+                    st.download_button(
+                        label="📦 Télécharger le fichier ZIP (HAL XML)",
+                        data=zip_buffer,
+                        file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
+                        mime="application/zip",
+                        key="download_zip_button"
+                    )
+                else:
+                    st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
 
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
