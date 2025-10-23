@@ -450,8 +450,6 @@ def main():
         
         st.dataframe(result_df_rennes)
 
-        """
-
         # --- Export XML HAL pour les publications absentes de HAL ---
         # (nécessite hal_xml_export.py dans le même dossier)
 
@@ -511,41 +509,7 @@ def main():
                     st.session_state['publications_list'] = []
                     
                 st.session_state['publications_list'] = publications_list
-        """
-        # --- Export XML HAL pour les publications absentes de HAL ---
-        # (nécessite hal_xml_export.py dans le même dossier)
-
-        # Filtrer les publications non présentes dans HAL
-        not_in_hal_df = result_df_rennes[result_df_rennes["Statut_HAL"].isin(["Hors HAL", "Pas de DOI valide"])]
-
-        if not not_in_hal_df.empty:
-            publications_list = []
-            for i, row in not_in_hal_df.iterrows():
-                publication = {
-                    "Title": row.get("Title", ""),
-                    "doi": row.get("doi", ""),
-                    "Date": row.get("Date", ""),
-                    "Source title": row.get("Source title", ""),
-                    "publisher": row.get("publisher", ""),
-                    "authors": row.get("authors", []),
-                    "raw_affiliations": row.get("raw_affiliations", []),
-                    "keywords": row.get("keywords", []),
-                    "abstract": row.get("abstract", "")
-                }
-                publications_list.append((f"pub_{i+1}", publication))
-
-            # Générer le ZIP des fichiers XML HAL
-            zip_buffer = generate_zip_from_xmls(publications_list)
-
-            st.download_button(
-                label="📦 Télécharger les XML HAL (ZIP) - expérimental",
-                data=zip_buffer,
-                file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
-                mime="application/zip"
-            )
-        else:
-            st.info("✅ Toutes les publications sont déjà référencées dans HAL.")
-                    
+  
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
@@ -559,7 +523,6 @@ def main():
             )
 
         # --- Export XML HAL (ZIP)---
-        """
         publications_list = result_df_rennes.to_dict(orient='records')
             
         if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental", key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
@@ -576,7 +539,6 @@ def main():
                 )
             else:
                 st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
-        """
 
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
