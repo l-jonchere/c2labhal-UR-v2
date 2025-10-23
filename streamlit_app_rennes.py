@@ -187,6 +187,15 @@ def main():
         st.sidebar.success("✅ hal_xml_export.py chargé")
     except Exception as e:
         st.sidebar.error(f"❌ hal_xml_export.py non chargé : {e}")
+
+    # Vérification des fonctions principales
+    try:
+        assert hasattr(utils, "get_openalex_data")
+        assert hasattr(utils, "HalCollImporter")
+        assert hasattr(hal_xml_export, "generate_zip_from_xmls")
+        st.sidebar.info("🔍 Fonctions clés détectées")
+    except AssertionError:
+        st.sidebar.warning("⚠️ Une ou plusieurs fonctions sont manquantes")
         
     st.set_page_config(page_title="c2LabHAL - Rennes", layout="wide")
     st.session_state.setdefault('publications_list', [])
