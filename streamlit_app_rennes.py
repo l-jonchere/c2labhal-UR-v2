@@ -546,6 +546,7 @@ def main():
             )
 
         # --- Export XML HAL (ZIP)---
+        """
         publications_list = result_df_rennes.to_dict(orient='records')
             
         if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental", key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
@@ -562,6 +563,7 @@ def main():
                 )
             else:
                 st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
+         """
 
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
