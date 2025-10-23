@@ -985,7 +985,7 @@ def get_initial_form(normalised_author_name):
     elif len(name_parts) == 1: 
         return normalised_author_name 
     return "" 
-
+"""
 def extract_authors_from_openalex_json(openalex_json):
     """Extrait les auteurs et affiliations d'un enregistrement OpenAlex."""
     authors_list = []
@@ -1021,4 +1021,4 @@ def extract_authors_from_openalex_json(openalex_json):
         })
 
     return authors_list
-
+"""
