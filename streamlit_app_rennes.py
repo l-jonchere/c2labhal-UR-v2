@@ -1,20 +1,17 @@
-import os # Pour la variable d'environnement NCBI_API_KEY
+import os  # Pour la variable d'environnement NCBI_API_KEY
 import streamlit as st
 import pandas as pd
 import io
-# Supprimé: requests, json, unicodedata, difflib, tqdm, concurrent
-# Ces imports sont maintenant dans utils.py ou non nécessaires directement ici
 
 # Importer les fonctions et constantes partagées depuis utils.py
 from utils import (
     get_scopus_data, get_openalex_data, get_pubmed_data, convert_to_dataframe,
     clean_doi, HalCollImporter, merge_rows_with_sources, get_authors_from_crossref,
     check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo,
-    normalise, normalize_name, get_initial_form # normalise est utilisé par HalCollImporter et check_df
+    normalise, normalize_name, get_initial_form
 )
-# Les constantes comme HAL_API_ENDPOINT sont utilisées par les fonctions dans utils.py
 
-# Importer les fonctions d'export XML
+# Importer la génération ZIP / XML (hal_xml_export.py)
 from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json
 
 # --- Définition de la liste des laboratoires (spécifique à cette application) ---
@@ -27,7 +24,7 @@ labos_list_rennes = [
         "collection": "ARENES", "scopus_id": "60105601", "openalex_id": "I4387155702", "openalex_raw":"UMR6051 OR \"Centre de recherches sur l'action politique en Europe\" OR CRAPE OR ARENES",
         "pubmed_query": "(ARENES[Affiliation]) OR (\"UMR6051\"[Affiliation]) OR (UMR 6051[Affiliation] OR OR (UMR CNRS 6051[Affiliation])"
     },
-    {"collection": "CREAAH", "scopus_id": "60105602", "openalex_id": "I4387153012", "openalex_raw":"UMR6566 OR \"UMR 6566\" OR \"CNRS 6566\" OR \"Centre de recherche en archéologie archéosciences histoire\" OR CReAAH OR \"Archaeology Archaeoscience and History\"", "pubmed_query": ""},
+        {"collection": "CREAAH", "scopus_id": "60105602", "openalex_id": "I4387153012", "openalex_raw":"UMR6566 OR \"UMR 6566\" OR \"CNRS 6566\" OR \"Centre de recherche en archéologie archéosciences histoire\" OR CReAAH OR \"Archaeology Archaeoscience and History\"", "pubmed_query": ""},
     {
         "collection": "BIOSIT", "scopus_id": "", "openalex_id": "", "openalex_raw":"ImPACcell OR H2P2 OR mric OR Protim OR FAIIA OR Prism",
         "pubmed_query": "(FAIIA[affiliation]) OR (mric[affiliation]) OR (prism[affiliation]) OR (H2P2[affiliation]) OR (Protim[affiliation]) OR (ImPACcell[affiliation])"
@@ -149,13 +146,12 @@ def add_sidebar_menu():
     st.sidebar.header("À Propos")
     st.sidebar.info(
     """
-    **c2LabHAL 2 - version expérimentale Université de Rennes** :
+    **c2LabHAL - Version Université de Rennes** :
     Cette version est préconfigurée pour les laboratoires de l'Université de Rennes.
     Sélectionnez un laboratoire dans la liste pour lancer la comparaison de ses publications
     (Scopus, OpenAlex, PubMed) avec sa collection HAL. c2LabHAL est une application créée par Guillaume Godet (Nantes Univ)
     """
 )
-    st.sidebar.markdown("✉️ [Contact : Laurent Jonchère (Univ Rennes)](https://scienceouverte.univ-rennes.fr/interlocuteurs/laurent-jonchere)")
     st.sidebar.markdown("---")
 
     st.sidebar.header("Autres applications c2LabHAL")
@@ -172,38 +168,16 @@ def add_sidebar_menu():
 
 
 def main():
-    # --- Vérification des modules importés ---
-    st.sidebar.title("🧠 Modules chargés")
-
-    try:
-        import utils
-        st.sidebar.success("✅ utils.py chargé")
-    except Exception as e:
-        st.sidebar.error(f"❌ utils.py non chargé : {e}")
-
-    try:
-        import hal_xml_export
-        st.sidebar.success("✅ hal_xml_export.py chargé")
-    except Exception as e:
-        st.sidebar.error(f"❌ hal_xml_export.py non chargé : {e}")
-
-    # Vérification des fonctions principales
-    try:
-        assert hasattr(utils, "get_openalex_data")
-        assert hasattr(utils, "HalCollImporter")
-        assert hasattr(hal_xml_export, "generate_zip_from_xmls")
-        st.sidebar.info("🔍 Fonctions clés détectées")
-    except AssertionError:
-        st.sidebar.warning("⚠️ Une ou plusieurs fonctions sont manquantes")
-        
     st.set_page_config(page_title="c2LabHAL - Rennes", layout="wide")
-    st.session_state.setdefault('publications_list', [])
+
+    # Initialisation des clés session (protège contre les reruns)
     st.session_state.setdefault('zip_buffer', None)
+    st.session_state.setdefault('publications_list', [])
+
     add_sidebar_menu() 
 
-    st.title("🥎 c2LabHAL 2 - Version expérimentale Université de Rennes")
-    st.subheader("Comparez les publications d’un laboratoire de l'Université de Rennes avec sa collection HAL", divider=True)
-    st.subheader("🔥 Version expérimentale")
+    st.title("🥎 c2LabHAL - Version Université de Rennes")
+    st.subheader("Comparez les publications d’un laboratoire de l'Université de Rennes avec sa collection HAL")
 
     labo_choisi_nom_rennes = st.selectbox(
         "Choisissez une collection HAL de laboratoire (Université de Rennes) :", 
@@ -251,11 +225,11 @@ def main():
         openalex_df_rennes = pd.DataFrame()
         pubmed_df_rennes = pd.DataFrame()
 
-        # --- Étape 1 : Récupération OpenAlex ---
+        # --- Étape 1 : Récupération OpenAlex (par id institution) ---
         if openalex_institution_id_rennes:
             with st.spinner(f"Récupération OpenAlex pour {collection_a_chercher_rennes}..."):
-                progress_text_area_rennes.info("Étape 1/9 : Récupération des données OpenAlex...") # Corrigé
-                progress_bar_rennes.progress(5) # Corrigé
+                progress_text_area_rennes.info("Étape 1/9 : Récupération des données OpenAlex...")
+                progress_bar_rennes.progress(5)
                 openalex_query_complet_rennes = f"authorships.institutions.id:{openalex_institution_id_rennes},publication_year:{start_year_rennes}-{end_year_rennes}"
                 openalex_data_rennes = get_openalex_data(openalex_query_complet_rennes, max_items=5000)
                 if openalex_data_rennes:
@@ -272,12 +246,13 @@ def main():
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
                 st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
-        progress_bar_rennes.progress(10) # Corrigé
+        progress_bar_rennes.progress(10)
 
+        # --- Étape 1b : Récupération OpenAlex (raw affiliation strings) ---
         if openalex_institution_raw_rennes:
-            with st.spinner(f"Récupération OpenAlex pour {collection_a_chercher_rennes}..."):
-                progress_text_area_rennes.info("Étape 1/9 : Récupération des données OpenAlex...") # Corrigé
-                progress_bar_rennes.progress(5) # Corrigé
+            with st.spinner(f"Récupération OpenAlex (raw) pour {collection_a_chercher_rennes}..."):
+                progress_text_area_rennes.info("Étape 1/9 : Récupération des données OpenAlex (raw)...")
+                progress_bar_rennes.progress(12)
                 openalex_query_complet_rennes = f"raw_affiliation_strings.search:{openalex_institution_raw_rennes},publication_year:{start_year_rennes}-{end_year_rennes}"
                 openalex_data_rennes = get_openalex_data(openalex_query_complet_rennes, max_items=5000)
                 if openalex_data_rennes:
@@ -294,13 +269,13 @@ def main():
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
                 st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
-        progress_bar_rennes.progress(10) # Corrigé
+        progress_bar_rennes.progress(15)
 
         # --- Étape 2 : Récupération PubMed ---
         if pubmed_query_labo_rennes: 
             with st.spinner(f"Récupération PubMed pour {collection_a_chercher_rennes}..."):
-                progress_text_area_rennes.info("Étape 2/9 : Récupération des données PubMed...") # Corrigé
-                progress_bar_rennes.progress(20) # Corrigé (ajusté pour être après l'info)
+                progress_text_area_rennes.info("Étape 2/9 : Récupération des données PubMed...")
+                progress_bar_rennes.progress(20)
                 pubmed_full_query_rennes = f"({pubmed_query_labo_rennes}) AND ({start_year_rennes}/01/01[Date - Publication] : {end_year_rennes}/12/31[Date - Publication])"
                 pubmed_data_rennes = get_pubmed_data(pubmed_full_query_rennes, max_items=5000)
                 if pubmed_data_rennes:
@@ -308,13 +283,13 @@ def main():
                 st.success(f"{len(pubmed_df_rennes)} publications PubMed trouvées pour {collection_a_chercher_rennes}.")
         else:
             st.info(f"Aucune requête PubMed configurée pour {collection_a_chercher_rennes}.")
-        progress_bar_rennes.progress(20) # Corrigé (ou 25 si on veut marquer la fin de l'étape)
+        progress_bar_rennes.progress(20)
 
         # --- Étape 3 : Récupération Scopus ---
         if scopus_lab_id_rennes and scopus_api_key_secret_rennes:
             with st.spinner(f"Récupération Scopus pour {collection_a_chercher_rennes}..."):
-                progress_text_area_rennes.info("Étape 3/9 : Récupération des données Scopus...") # Corrigé
-                progress_bar_rennes.progress(25) # Corrigé (ajusté)
+                progress_text_area_rennes.info("Étape 3/9 : Récupération des données Scopus...")
+                progress_bar_rennes.progress(25)
                 scopus_query_complet_rennes = f"AF-ID({scopus_lab_id_rennes}) AND PUBYEAR > {start_year_rennes - 1} AND PUBYEAR < {end_year_rennes + 1}"
                 scopus_data_rennes = get_scopus_data(scopus_api_key_secret_rennes, scopus_query_complet_rennes, max_items=5000)
                 if scopus_data_rennes:
@@ -331,10 +306,10 @@ def main():
                 st.success(f"{len(scopus_df_rennes)} publications Scopus trouvées pour {collection_a_chercher_rennes}.")
         elif scopus_lab_id_rennes and not scopus_api_key_secret_rennes:
             st.warning(f"L'ID Scopus est fourni pour {collection_a_chercher_rennes} mais la clé API Scopus n'est pas configurée. Scopus sera ignoré.")
-        progress_bar_rennes.progress(30) # Corrigé
-        
+        progress_bar_rennes.progress(30)
+
         # --- Étape 4 : Combinaison des données ---
-        progress_text_area_rennes.info("Étape 4/9 : Combinaison des données sources...") # Corrigé
+        progress_text_area_rennes.info("Étape 4/9 : Combinaison des données sources...")
         combined_df_rennes = pd.concat([scopus_df_rennes, openalex_df_rennes, pubmed_df_rennes], ignore_index=True)
 
         if combined_df_rennes.empty:
@@ -347,8 +322,8 @@ def main():
 
 
         # --- Étape 5 : Fusion des lignes en double ---
-        progress_text_area_rennes.info("Étape 5/9 : Fusion des doublons...") # Corrigé
-        progress_bar_rennes.progress(40) # Corrigé
+        progress_text_area_rennes.info("Étape 5/9 : Fusion des doublons...")
+        progress_bar_rennes.progress(40)
         
         with_doi_df_rennes = combined_df_rennes[combined_df_rennes['doi'].notna()].copy()
         without_doi_df_rennes = combined_df_rennes[combined_df_rennes['doi'].isna()].copy()
@@ -374,12 +349,12 @@ def main():
             st.error(f"Aucune donnée après fusion pour {collection_a_chercher_rennes}.")
             st.stop()
         st.success(f"{len(final_merged_data_rennes)} publications uniques après fusion pour {collection_a_chercher_rennes}.")
-        progress_bar_rennes.progress(50) # Corrigé
+        progress_bar_rennes.progress(50)
 
         # --- Étape 6 : Comparaison HAL ---
         coll_df_hal_rennes = pd.DataFrame()
         with st.spinner(f"Importation de la collection HAL '{collection_a_chercher_rennes}'..."):
-            progress_text_area_rennes.info(f"Étape 6a/9 : Importation de la collection HAL '{collection_a_chercher_rennes}'...") # Corrigé
+            progress_text_area_rennes.info(f"Étape 6a/9 : Importation de la collection HAL '{collection_a_chercher_rennes}'...")
             coll_importer_rennes_obj = HalCollImporter(collection_a_chercher_rennes, start_year_rennes, end_year_rennes)
             coll_df_hal_rennes = coll_importer_rennes_obj.import_data()
             if coll_df_hal_rennes.empty:
@@ -387,29 +362,26 @@ def main():
             else:
                 st.success(f"{len(coll_df_hal_rennes)} notices HAL pour {collection_a_chercher_rennes}.")
         
-        progress_text_area_rennes.info("Étape 6b/9 : Comparaison avec les données HAL...") # Corrigé
-        result_df_rennes = check_df(final_merged_data_rennes.copy(), coll_df_hal_rennes, progress_bar_st=progress_bar_rennes, progress_text_st=progress_text_area_rennes) # Passé les bons objets
+        progress_text_area_rennes.info("Étape 6b/9 : Comparaison avec les données HAL...")
+        result_df_rennes = check_df(final_merged_data_rennes.copy(), coll_df_hal_rennes, progress_bar_st=progress_bar_rennes, progress_text_st=progress_text_area_rennes)
         st.success(f"Comparaison HAL pour {collection_a_chercher_rennes} terminée.")
-        # progress_bar_rennes est géré par check_df
 
         # --- Étape 7 : Enrichissement Unpaywall ---
         with st.spinner(f"Enrichissement Unpaywall pour {collection_a_chercher_rennes}..."):
-            progress_text_area_rennes.info("Étape 7/9 : Enrichissement Unpaywall...") # Corrigé
-            progress_bar_rennes.progress(70) # Corrigé (ajouté avant l'appel)
+            progress_text_area_rennes.info("Étape 7/9 : Enrichissement Unpaywall...")
+            progress_bar_rennes.progress(70)
             result_df_rennes = enrich_w_upw_parallel(result_df_rennes.copy())
             st.success(f"Enrichissement Unpaywall pour {collection_a_chercher_rennes} terminé.")
-        # progress_bar_rennes.progress(70) # Déplacé avant l'appel
 
         # --- Étape 8 : Permissions de dépôt ---
         with st.spinner(f"Récupération des permissions pour {collection_a_chercher_rennes}..."):
-            progress_text_area_rennes.info("Étape 8/9 : Récupération des permissions de dépôt...") # Corrigé
-            progress_bar_rennes.progress(80) # Corrigé (ajouté avant l'appel)
+            progress_text_area_rennes.info("Étape 8/9 : Récupération des permissions de dépôt...")
+            progress_bar_rennes.progress(80)
             result_df_rennes = add_permissions_parallel(result_df_rennes.copy())
             st.success(f"Permissions pour {collection_a_chercher_rennes} récupérées.")
-        # progress_bar_rennes.progress(80) # Déplacé avant l'appel
 
         # --- Étape 9 : Déduction des actions et auteurs ---
-        progress_text_area_rennes.info("Étape 9/9 : Déduction des actions et traitement des auteurs...") # Corrigé
+        progress_text_area_rennes.info("Étape 9/9 : Déduction des actions et traitement des auteurs...")
         if 'Action' not in result_df_rennes.columns: result_df_rennes['Action'] = pd.NA
         result_df_rennes['Action'] = result_df_rennes.apply(deduce_todo, axis=1)
 
@@ -468,72 +440,39 @@ def main():
             elif compare_authors_rennes and not uploaded_authors_file_rennes:
                  st.warning("Veuillez téléverser un fichier CSV de chercheurs pour la comparaison des auteurs (rennes).")
 
-        progress_bar_rennes.progress(90) # Corrigé
+        progress_bar_rennes.progress(90)
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
 
-        # --- Export XML HAL pour les publications absentes de HAL ---
-        # (nécessite hal_xml_export.py dans le même dossier)
+        # --- Export XML HAL (ZIP) ---
+        # Nous construisons la liste de publications à partir du df résultat,
+        # puis proposons la génération du ZIP (séparé du download pour éviter les reruns).
+        publications_list = result_df_rennes.to_dict(orient='records')
 
-        # Bouton pour déclencher l'export (récupération OpenAlex + génération XML + ZIP)
-        if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental"):
-            publications_list = []
-
-            # Parcours du DataFrame et construction des métadonnées pour l'export
-            for _, row in result_df_rennes.iterrows():
-                statut = str(row.get("Statut_HAL", "")).strip()
-                # Adapter la condition si on veut inclure d'autres statuts
-                if statut not in ["Hors HAL", "Pas de DOI valide", "Titre incorrect, probablement absent de HAL"]:
-                    continue
-
-                doi_value = str(row.get("doi", "") or "").strip()
-                # Si pas de DOI, on passe (on peut adapter pour générer sans DOI si besoin)
-                if not doi_value:
-                    continue
-                    
-                # Récupération OpenAlex (si échec on continue proprement)
-                openalex_data = {}
+        # Générer le ZIP (bouton déclencheur, clé unique)
+        if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_trigger_{collection_a_chercher_rennes}"):
+            with st.spinner(f"Préparation du ZIP pour {len(publications_list)} publications..."):
                 try:
-                    openalex_data = get_openalex_data(doi_value) or {}
-                except Exception as e_openalex:
-                    st.warning(f"Erreur OpenAlex pour DOI {doi_value}: {e_openalex}")
-                    openalex_data = {}
+                    zip_buffer = generate_zip_from_xmls(publications_list)
+                    # On stocke les octets dans session_state pour survivre au rerun
+                    st.session_state['zip_buffer'] = zip_buffer.getvalue() if zip_buffer is not None else None
+                    st.success("✅ ZIP généré avec succès ! Vous pouvez le télécharger ci-dessous.")
+                except Exception as e_zip:
+                    st.error(f"Erreur lors de la génération du ZIP : {e_zip}")
+                    st.session_state['zip_buffer'] = None
 
-                # Extraction des auteurs/affiliations depuis OpenAlex (si dispo)
-                authors = []
-                try:
-                    if openalex_data:
-                        authors = extract_authors_from_openalex_json(openalex_data)
-                except Exception as e_extract:
-                    st.warning(f"Erreur extraction auteurs OpenAlex pour DOI {doi_value}: {e_extract}")
-                    authors = []
-                    
-                # Construction du dictionnaire attendu par generate_hal_xml()
-                pub_data = {
-                    "Title": row.get("Title", "") or (openalex_data.get("title") if isinstance(openalex_data, dict) else ""),
-                    "doi": doi_value,
-                    "publisher": (openalex_data.get("host_venue", {}) or {}).get("publisher", "") if isinstance(openalex_data, dict) else "",
-                    "Source title": (openalex_data.get("host_venue", {}) or {}).get("display_name", "") if isinstance(openalex_data, dict) else "",
-                    "Date": openalex_data.get("publication_year", "") if isinstance(openalex_data, dict) else row.get("Date", ""),
-                    "authors": authors,
-                    # On peut ajouter d'autres champs (keywords, abstract, raw_affiliations globales...)
-                }
+        # Affichage du bouton de téléchargement uniquement si ZIP disponible
+        if st.session_state.get('zip_buffer'):
+            st.download_button(
+                label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                data=st.session_state['zip_buffer'],
+                file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
+                mime="application/zip",
+                key=f"download_zip_{collection_a_chercher_rennes}"
+            )
 
-                publications_list.append(pub_data)
-
-            # Si rien à exporter, informer l'utilisateur
-            if not publications_list:
-                st.info("Aucune publication 'Hors HAL' (avec DOI) trouvée à exporter en XML.")
-            else:
-                # --- Étape 1 : stocker les publications dans la session Streamlit ---
-                st.write("🔍 Nombre de publications prêtes à exporter :", len(publications_list))
-                if 'publications_list' not in st.session_state:
-                    st.session_state['publications_list'] = []
-                    
-                st.session_state['publications_list'] = publications_list
-
-        # --- Export CSV classique ---
+        # --- Export CSV classique (inchangé) ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
             output_filename_rennes_final = f"c2LabHAL_resultats_{collection_a_chercher_rennes.replace(' ', '_')}_{start_year_rennes}-{end_year_rennes}.csv"
@@ -542,30 +481,10 @@ def main():
                 data=csv_export_rennes_data,
                 file_name=output_filename_rennes_final,
                 mime="text/csv",
-                key=f"download_csv_{collection_a_chercher_rennes}"  # ✅ clé unique pour chaque labo
+                key=f"download_rennes_{collection_a_chercher_rennes}"
             )
-
-        # --- Export XML HAL (ZIP)---   
-        publications_list = result_df_rennes.to_dict(orient='records')
-            
-        if st.button("📦 Télécharger les XML HAL (ZIP) - expérimental", key=f"generate_zip_button_{collection_a_chercher_rennes}"):  # ✅ clé unique
-            st.info(f"Préparation du ZIP pour {len(publications_list)} publications...")
-            from hal_xml_export import generate_zip_from_xmls
-            zip_buffer = generate_zip_from_xmls(publications_list)
-            if zip_buffer:
-                st.download_button(
-                    label="📦 Télécharger le fichier ZIP (HAL XML)",
-                    data=zip_buffer,
-                    file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
-                    mime="application/zip",
-                    key=f"download_zip_{collection_a_chercher_rennes}"  # ✅ clé unique
-                )
-            else:
-                st.warning("Aucun fichier XML généré (vérifiez les données d'entrée).")
-
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
 
 if __name__ == "__main__":
     main()
-
