@@ -610,7 +610,7 @@ def main():
                 )
         else:
             # Pas de résultats en session => rien à afficher
-        pass
+            pass
     
                                     
         progress_bar_rennes.progress(100)
