@@ -536,12 +536,14 @@ def main():
             st.markdown("---")
             st.write(f"🗂 Résultats en session pour la collection **{last_collection}** — {len(last_df)} lignes enregistrées.")
 
-            # Filtrer seulement les publications "hors HAL" (adapter la liste des statuts si besoin)
-            if 'Statut_HAL' in last_df.columns:
-                mask_non_hal = last_df['Statut_HAL'].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"])
-                pubs_to_export = last_df[mask_non_hal].to_dict(orient='records')
+            # Filtrer seulement les publications "Créer la notice" (adapter la liste des statuts si besoin)
+            if 'Action' in last_df.columns:
+                # Filtrer uniquement celles où "Créer la notice" est mentionné
+                mask_creer_notice = last_df['Action'].fillna("").str.contains("Créer la notice", case=False, na=False)
+                pubs_to_export = last_df[mask_creer_notice].to_dict(orient='records')
+                st.info(f"📄 Publications à exporter (Action = 'Créer la notice...') : {len(pubs_to_export)}")
             else:
-                # si la colonne n'existe pas, laisse tout (ou change la logique)
+                st.warning("⚠️ Colonne 'Action' absente, impossible de filtrer sur 'Créer la notice'.")
                 pubs_to_export = last_df.to_dict(orient='records')
             
             st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
@@ -550,6 +552,11 @@ def main():
             if pubs_to_export:
                 st.write("🔍 Vérification de la première publication avant génération XML :")
                 st.json(pubs_to_export[0])
+
+            # Voir les titres et le contenu de la colonne Action juste avant le téléchargement ZIP
+            if pubs_to_export:
+                st.write("🔍 Aperçu des publications sélectionnées :")
+                st.dataframe(pd.DataFrame(pubs_to_export)[["Title", "Action", "doi"]].head())
 
             # Fusionne les infos HAL avec celles d’OpenAlex (si disponibles)
             if 'openalex_publications_raw' in st.session_state:
