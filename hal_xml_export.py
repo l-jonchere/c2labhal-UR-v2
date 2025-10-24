@@ -83,7 +83,6 @@ def _build_listorg_from_institutions(institutions):
 # ==============================
 # Extraction des auteurs OpenAlex
 # ==============================
-"""
 def extract_authors_from_openalex_json(openalex_authorships):
     """
     Extrait la liste des auteurs depuis la structure OpenAlex JSON (champ 'authorships').
@@ -115,7 +114,6 @@ def extract_authors_from_openalex_json(openalex_authorships):
             continue
 
     return authors_data
-"""
 
 # ==============================
 # Génération XML HAL (un par publication)
