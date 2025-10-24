@@ -445,6 +445,23 @@ def main():
         
         st.dataframe(result_df_rennes)
 
+        # --- Bloc de test rapide (temporarily A RETIRER ENSUITE) ---
+        if st.button("🔬 Test rapide: générer ZIP pour 2 pubs (debug)", key="test_zip_2"):
+            sample_list = result_df_rennes.head(2).to_dict(orient='records')
+            st.write("Sample pour test :", sample_list)
+            try:
+                zipbuf = generate_zip_from_xmls(sample_list)
+                if zipbuf:
+                    st.write("Taille du zip (bytes):", len(zipbuf.getvalue()))
+                    st.download_button(label="Télécharger test ZIP", data=zipbuf.getvalue(),
+                                       file_name="test_hal_export.zip", mime="application/zip", key="test_download")
+                else:
+                    st.warning("generate_zip_from_xmls a retourné None")
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur lors du test rapide : {e}")
+                st.text(traceback.format_exc())
+
         # --- Export XML HAL (ZIP) ---
         # Nous construisons la liste de publications à partir du df résultat,
         # puis proposons la génération du ZIP (séparé du download pour éviter les reruns).
