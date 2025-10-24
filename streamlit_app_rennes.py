@@ -276,7 +276,6 @@ def main():
                     # On ajoute une colonne 'authors' et une colonne 'institutions' pour le XML HAL
 
                     def enrich_with_openalex_authors(openalex_results):
-                    """Crée une structure auteurs/institutions utilisable pour le XML HAL"""
                         publications = []
                         for pub in openalex_results:
                             # extraction auteurs + affiliations via la fonction déjà existante
