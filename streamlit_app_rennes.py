@@ -491,7 +491,7 @@ def main():
                 st.write(f"🧩 Publication : {p.get('Title', 'Sans titre')}")
             if "authors" in p:
                 authors = p.get('authors') or []
-                st.write(f"Nombre d'auteurs : {len(p['authors'])}")
+                st.write(f"Nombre d'auteurs : {len(authors)}")
                 if authors:
                     names_preview = [a.get('name', '?') for a in authors[:3]]
                     st.write(f"Auteurs (aperçu) : {', '.join(names_preview)}")
