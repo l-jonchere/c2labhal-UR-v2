@@ -271,7 +271,47 @@ def main():
                     openalex_df_rennes = openalex_df_rennes[[col for col in cols_to_keep_rennes if col in openalex_df_rennes.columns]]
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
-                st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
+                        
+                    # --- Extraction des auteurs et affiliations depuis les métadonnées OpenAlex ---
+                    # On ajoute une colonne 'authors' et une colonne 'institutions' pour le XML HAL
+
+                    def enrich_with_openalex_authors(openalex_results):
+                    """Crée une structure auteurs/institutions utilisable pour le XML HAL"""
+                        publications = []
+                        for pub in openalex_results:
+                            # extraction auteurs + affiliations via la fonction déjà existante
+                            authors_data = extract_authors_from_openalex_json(pub)
+                            # on extrait aussi les institutions uniques associées
+                            institutions = []
+                            for a in authors_data:
+                                for aff in a.get("raw_affiliations", []):
+                                    # ici tu pourrais essayer de reconnaître un ROR dans la chaîne brute
+                                    # mais pour l’instant on crée une structure simple
+                                    institutions.append({
+                                        "display_name": aff,
+                                        "type": "institution"
+                                    })
+                            # supprime doublons
+                            unique_institutions = [dict(t) for t in {tuple(d.items()) for d in institutions}]
+
+                            publications.append({
+                                "Title": pub.get("title"),
+                                "doi": pub.get("doi"),
+                                "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
+                                "Date": pub.get("publication_date"),
+                                "authors": authors_data,
+                                "institutions": unique_institutions,
+                                "Data source": "openalex"
+                            })
+                        return publications
+
+                    # Applique la fonction
+                    enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
+
+                    # Convertit en DataFrame pour l’utiliser plus tard
+                    openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
+
+                    st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
 
         # --- Étape 2 : Récupération PubMed ---
