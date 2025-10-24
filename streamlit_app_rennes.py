@@ -536,15 +536,44 @@ def main():
             st.markdown("---")
             st.write(f"🗂 Résultats en session pour la collection **{last_collection}** — {len(last_df)} lignes enregistrées.")
 
-            # Filtrer seulement les publications "Créer la notice" (adapter la liste des statuts si besoin)
-            if 'Action' in last_df.columns:
-                # Filtrer uniquement celles où "Créer la notice" est mentionné
-                mask_creer_notice = last_df['Action'].fillna("").str.contains("Créer la notice", case=False, na=False)
-                pubs_to_export = last_df[mask_creer_notice].to_dict(orient='records')
-                st.info(f"📄 Publications à exporter (Action = 'Créer la notice...') : {len(pubs_to_export)}")
+            # --- Sélection selon Statut HAL (seules les publications "non dans la collection" sont exportées) ---
+            desired_statuses = {"hors hal", "dans hal mais hors de la collection"}
+            
+            if 'Statut_HAL' in last_df.columns:
+                # normalise (minuscules + trim) avant test
+                last_df['_statut_hal_norm'] = last_df['Statut_HAL'].fillna("").astype(str).str.lower().str.strip()
+                mask_export = last_df['_statut_hal_norm'].isin(desired_statuses)
+                pubs_to_export = last_df[mask_export].to_dict(orient='records')
+                st.info(f"📄 Publications sélectionnées (Statut_HAL in {list(desired_statuses)}): {len(pubs_to_export)}")
             else:
-                st.warning("⚠️ Colonne 'Action' absente, impossible de filtrer sur 'Créer la notice'.")
-                pubs_to_export = last_df.to_dict(orient='records')
+                st.warning("⚠️ Colonne 'Statut_HAL' absente : impossible de filtrer. Aucune publication sélectionnée.")
+                pubs_to_export = []
+            
+            # --- Si nous avons des méta OpenAlex en session, fusionner par DOI pour garantir authors/institutions ---
+            if pubs_to_export and 'openalex_publications_raw' in st.session_state:
+                # créer un index par DOI (string nettoyé) pour lookup
+                openalex_by_doi = {}
+                for p in st.session_state['openalex_publications_raw']:
+                    doi_val = (p.get('doi') or "").strip().lower()
+                    if doi_val:
+                        openalex_by_doi[doi_val] = p
+
+                for pub in pubs_to_export:
+                    doi_pub = (pub.get('doi') or "").strip().lower()
+                    if doi_pub and doi_pub in openalex_by_doi:
+                        oa = openalex_by_doi[doi_pub]
+                        # n'écrase pas si already present; ajoute seulement si absent ou vide
+                        if not pub.get('authors'):
+                            pub['authors'] = oa.get('authors', [])
+                        if not pub.get('institutions'):
+                            pub['institutions'] = oa.get('institutions', [])
+
+            # debug rapide avant génération
+            if pubs_to_export:
+                st.write("🔎 Exemple avant génération (1er élément) :")
+                st.json(pubs_to_export[0])
+            else:
+                st.write("ℹ️ Aucun enregistrement ne correspond au filtre Statut_HAL demandé.")
             
             st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
 
