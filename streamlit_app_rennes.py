@@ -173,6 +173,9 @@ def main():
     # Initialisation des clés session (protège contre les reruns)
     st.session_state.setdefault('zip_buffer', None)
     st.session_state.setdefault('publications_list', [])
+    st.session_state.setdefault('last_result_df', None)       # contient la table résultat sérialisée (list of dicts)
+    st.session_state.setdefault('last_collection', None)      # collection traitée (nom)
+    st.session_state.setdefault('zip_buffer', None)           # bytes du zip généré
 
     add_sidebar_menu() 
 
