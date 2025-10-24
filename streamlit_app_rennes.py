@@ -299,6 +299,12 @@ def main():
                     # Appliquer la fonction
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
+
+                    st.write("✅ Données OpenAlex enrichies :")
+                    st.dataframe(openalex_df_rennes[['Title', 'authors']].head())
+
+                    # Sauvegarde directe pour l’étape XML
+                    st.session_state['last_result_df'] = openalex_df_rennes.to_dict(orient='records')
                     # ---------------------------------------------------------
                 st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
