@@ -542,7 +542,7 @@ def main():
                 last_df['_statut_hal_norm'] = last_df['Statut_HAL'].fillna("").astype(str).str.lower().str.strip()
                 mask_export = last_df['_statut_hal_norm'].isin(desired_statuses)
                 pubs_to_export = last_df[mask_export].to_dict(orient='records')
-                st.info(f"?? Publications sélectionnées pour export (Statut_HAL in {list(desired_statuses)}): {len(pubs_to_export)}")
+                st.info(f"📄Publications sélectionnées pour export (Statut_HAL in {list(desired_statuses)}): {len(pubs_to_export)}")
             else:
                 st.warning("⚠️ Colonne 'Statut_HAL' absente : impossible de filtrer. Aucune publication sélectionnée.")
 
