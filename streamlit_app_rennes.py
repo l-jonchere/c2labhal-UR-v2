@@ -310,7 +310,7 @@ def main():
 
                     # Convertit en DataFrame pour l’utiliser plus tard
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
-                                
+
                     st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
 
@@ -546,21 +546,21 @@ def main():
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
-                try:
-                    # Importer la fonction (déjà dans ton environnement)
-                    zipbuf = generate_zip_from_xmls(pubs_to_export)
-                    if zipbuf:
-                        # stocker bytes pour survivre au rerun
-                        st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                        st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
-                    else:
-                        st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
-                except Exception as e:
-                    import traceback
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
-                    st.text(traceback.format_exc())
+            try:
+                # Importer la fonction (déjà dans ton environnement)
+                zipbuf = generate_zip_from_xmls(pubs_to_export)
+                if zipbuf:
+                # stocker bytes pour survivre au rerun
+                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                    st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
+                else:
+                    st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
 
-            # Afficher le bouton de téléchargement (s’il existe déjà un ZIP)
+            # Afficher le bouton de téléchargement si présent en session
             if st.session_state.get('zip_buffer'):
                 st.download_button(
                     label="⬇️ Télécharger le fichier ZIP des XML HAL",
