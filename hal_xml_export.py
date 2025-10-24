@@ -121,8 +121,8 @@ def generate_hal_xml(pub_data):
 
         name_parts = _safe_text(author.get("name")).split(" ", 1)
         if len(name_parts) == 2:
-            ET.SubElement(persName, "forename", {"type": "first"}).text = name_parts[0]
-            ET.SubElement(persName, "surname").text = name_parts[1]
+            ET.SubElement(persName, "forename", {"type": "first"}).text = safe_str(name_parts[0])
+            ET.SubElement(persName, "surname").text = safe_str(name_parts[1])
         else:
             ET.SubElement(persName, "surname").text = safe_str(author.get("name"))
 
