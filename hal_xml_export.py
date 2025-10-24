@@ -4,6 +4,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 import pandas as pd
 import streamlit as st
+import traceback
 
 # ==============================
 # Utilitaires internes
@@ -156,18 +157,26 @@ def generate_zip_from_xmls(publications_list):
     Génère un fichier ZIP en mémoire contenant un fichier XML par publication.
     Retourne un objet BytesIO prêt à être téléchargé.
     """
-    st.info(f"🧩 Fonction generate_zip_from_xmls appelée avec {len(publications_list)} publications.")
+    st.info(f"🔧 generate_zip_from_xmls démarrée — {len(publications_list)} publications")
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for pub in publications_list:
+        for idx, pub in enumerate(publications_list):
             try:
-                xml_bytes = generate_hal_xml(pub)
-                xml_filename = f"{_safe_filename(pub.get('Title', 'untitled'))}.xml"
-                zip_file.writestr(xml_filename, xml_bytes)
+                title_preview = pub.get('Title', '') if isinstance(pub, dict) else str(pub)
+                st.write(f"  · Traitement [{idx+1}/{len(publications_list)}] : {title_preview[:80]}")
+                xml_bytes = generate_hal_xml(pub)  # ma fonction existante
+                if not xml_bytes:
+                    st.warning(f"    → generate_hal_xml a retourné None pour la pub {idx+1}")
+                    continue
+                filename = f"{_safe_filename(pub.get('Title','untitled'))}.xml"
+                zip_file.writestr(filename, xml_bytes)
             except Exception as e:
-                st.warning(f"Erreur lors de la génération XML pour '{_safe_text(pub.get('Title', ''))}': {e}")
+                st.error(f"Erreur lors de la génération XML pour index {idx} : {e}")
+                st.text(traceback.format_exc())
+                # On continue sur les autres publications
                 continue
-
     zip_buffer.seek(0)
+    st.info("✅ generate_zip_from_xmls terminée")
     return zip_buffer
+    
