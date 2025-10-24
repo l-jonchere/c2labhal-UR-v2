@@ -308,11 +308,8 @@ def main():
                     # Applique la fonction
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
 
-                    # Convertit en DataFrame pour l’utiliser plus tard
-                    openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
-                    
-                    st.write("? Données OpenAlex enrichies :")
-                    st.dataframe(openalex_df_rennes[['Title', 'authors']].head())
+                    # ✅ On garde la liste originale des dicts (pas de DataFrame ici)
+                    st.session_state['openalex_publications_raw'] = enriched_publications_rennes
                     
                     # Sauvegarde directe pour l’étape XML
                     st.session_state['last_result_df'] = openalex_df_rennes.to_dict(orient='records')
@@ -552,6 +549,17 @@ def main():
             # Debug avant génération ZIP
             if pubs_to_export:
                 st.write("🔍 Vérification de la première publication avant génération XML :")
+                st.json(pubs_to_export[0])
+
+            # Fusionne les infos HAL avec celles d’OpenAlex (si disponibles)
+            if 'openalex_publications_raw' in st.session_state:
+                pubs_to_export = st.session_state['openalex_publications_raw']
+                st.info(f"🧩 Publications avec auteurs chargées depuis session : {len(pubs_to_export)}")
+            else:
+                st.warning("⚠️ Aucun jeu de données OpenAlex enrichi trouvé.")
+
+            if pubs_to_export:
+                st.write("🔍 Exemple de structure avant XML :")
                 st.json(pubs_to_export[0])
 
             # Bouton : génération du ZIP (clé unique)
