@@ -330,30 +330,45 @@ def generate_hal_xml(pub_data):
 # ==============================
 
 def generate_zip_from_xmls(publications_list):
+    """Génère un zip à partir de publications_list (liste de dicts).
+       Affiche du debug dans Streamlit pour chaque item.
     """
-    Génère un fichier ZIP en mémoire contenant un fichier XML par publication.
-    Retourne un objet BytesIO prêt à être téléchargé.
-    """
-    st.info(f"🔧 generate_zip_from_xmls démarrée — {len(publications_list)} publications")
+    st.info(f"🔧 generate_zip_from_xmls démarrée — {len(publications_list)} publications à traiter")
     zip_buffer = io.BytesIO()
+    written_files = []  # debug: keep track of filenames actually written
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for idx, pub in enumerate(publications_list):
             try:
-                title_preview = pub.get('Title', '') if isinstance(pub, dict) else str(pub)
-                st.write(f"  · Traitement [{idx+1}/{len(publications_list)}] : {title_preview[:80]}")
-                xml_bytes = generate_hal_xml(pub)  # ma fonction existante
+                # debug: afficher statut source/Statut_HAL/Action
+                title_preview = (pub.get('Title') or pub.get('title') or "")[:120]
+                doi_preview = pub.get('doi') or ""
+                statut_hal = pub.get('Statut_HAL') or pub.get('statut_hal') or ""
+                action_val = pub.get('Action') or pub.get('action') or ""
+
+                st.write(f"  · [{idx+1}/{len(publications_list)}] Titre: {title_preview}")
+                st.write(f"      DOI: {doi_preview} | Statut_HAL: {statut_hal} | Action: {action_val}")
+
+                # Génération XML
+                xml_bytes = generate_hal_xml(pub)  # ta fonction
                 if not xml_bytes:
-                    st.warning(f"    → generate_hal_xml a retourné None pour la pub {idx+1}")
+                    st.warning(f"    ? generate_hal_xml a retourné None pour la pub {idx+1} ({title_preview})")
                     continue
+
+                # filename sûr
                 filename = f"{_safe_filename(pub.get('Title','untitled'))}.xml"
                 zip_file.writestr(filename, xml_bytes)
+                written_files.append({"filename": filename, "title": title_preview, "doi": doi_preview, "statut_hal": statut_hal, "action": action_val})
+
             except Exception as e:
                 st.error(f"Erreur lors de la génération XML pour index {idx} : {e}")
                 st.text(traceback.format_exc())
-                # On continue sur les autres publications
                 continue
+
     zip_buffer.seek(0)
     st.info("✅ generate_zip_from_xmls terminée")
+    # show summary of what was actually written
+    st.write("🗂 Fichiers écrits dans le ZIP :")
+    for w in written_files:
+        st.write(f" - {w['filename']} | DOI: {w['doi']} | Statut_HAL: {w['statut_hal']} | Action: {w.get('action','')}")
     return zip_buffer
-    
