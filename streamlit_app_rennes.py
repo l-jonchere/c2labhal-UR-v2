@@ -469,37 +469,7 @@ def main():
         st.write(f"Total : {len(result_df_rennes)} lignes")
         publications_list = result_df_rennes.to_dict(orient='records')
 
-        # <-- ancien bloc à supprimer ou commenter --> 
-        """
-        # Générer le ZIP (bouton déclencheur, clé unique)
-         """
-         """
-        if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_trigger_{collection_a_chercher_rennes}"):
-            with st.spinner(f"Préparation du ZIP pour {len(publications_list)} publications..."):
-                try:
-                    zip_buffer = generate_zip_from_xmls(publications_list)
-                    # On stocke les octets dans session_state pour survivre au rerun
-                    st.session_state['zip_buffer'] = zip_buffer.getvalue() if zip_buffer is not None else None
-                    st.success("✅ ZIP généré avec succès ! Vous pouvez le télécharger ci-dessous.")
-                except Exception as e_zip:
-                    st.error(f"Erreur lors de la génération du ZIP : {e_zip}")
-                    st.session_state['zip_buffer'] = None
-         """
-         """
-        # Affichage du bouton de téléchargement uniquement si ZIP disponible
-         """
-         """
-        if st.session_state.get('zip_buffer'):
-            st.download_button(
-                label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                data=st.session_state['zip_buffer'],
-                file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
-                mime="application/zip",
-                key=f"download_zip_{collection_a_chercher_rennes}"
-            )
-        """
-
-        # --- Export CSV classique (inchangé) ---
+        # --- Export CSV classique ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
             output_filename_rennes_final = f"c2LabHAL_resultats_{collection_a_chercher_rennes.replace(' ', '_')}_{start_year_rennes}-{end_year_rennes}.csv"
