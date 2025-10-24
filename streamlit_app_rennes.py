@@ -447,30 +447,17 @@ def main():
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
+        # --- Sauvegarde persistante des résultats pour permettre les actions après rerun ---
+        try:
+            st.session_state['last_result_df'] = result_df_rennes.to_dict(orient='records')
+            st.session_state['last_collection'] = collection_a_chercher_rennes
+            st.success("✅ Résultats sauvegardés en session — vous pouvez générer le ZIP sans relancer la recherche.")
+        except Exception as e:
+            st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
-        # --- Bloc de test rapide (temporarily A RETIRER ENSUITE) ---
-        if st.button("🔬 Test rapide: générer ZIP pour 2 pubs (debug)", key="test_zip_2"):
-            sample_list = result_df_rennes.head(2).to_dict(orient='records')
-            st.write("Sample pour test :", sample_list)
-            try:
-                zipbuf = generate_zip_from_xmls(sample_list)
-                if zipbuf:
-                    st.write("Taille du zip (bytes):", len(zipbuf.getvalue()))
-                    st.download_button(label="Télécharger test ZIP", data=zipbuf.getvalue(),
-                                       file_name="test_hal_export.zip", mime="application/zip", key="test_download")
-                else:
-                    st.warning("generate_zip_from_xmls a retourné None")
-            except Exception as e:
-                import traceback
-                st.error(f"Erreur lors du test rapide : {e}")
-                st.text(traceback.format_exc())
-
-        # --- Export XML HAL (ZIP) ---
-        # Nous construisons la liste de publications à partir du df résultat,
-        # puis proposons la génération du ZIP (séparé du download pour éviter les reruns).
-        st.write("Aperçu des publications à exporter :", result_df_rennes.head())
-        st.write(f"Total : {len(result_df_rennes)} lignes")
-        publications_list = result_df_rennes.to_dict(orient='records')
+        # --- Export XML HAL (préparation) ---
+        st.write("Aperçu (head) des résultats :", result_df_rennes.head())
+        st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
 
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
@@ -484,56 +471,57 @@ def main():
                 key=f"download_rennes_{collection_a_chercher_rennes}"
             )
 
-        # --- Export XML HAL expérimental (seulement pour les pubs hors HAL) ---
-        if not result_df_rennes.empty:
-            # debug : aperçu et compte
-            st.write("Aperçu (head) des résultats :", result_df_rennes.head())
-            st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
+        # -----------------------
+        # Panneau d'export ZIP (lit depuis session_state)
+        # -----------------------
+        if st.session_state.get('last_result_df') is not None:
+        # Reconstruire un DataFrame local pour affichage/filtrage si besoin
+            last_df = pd.DataFrame(st.session_state['last_result_df'])
+            last_collection = st.session_state.get('last_collection', 'unknown')
 
-            # Filtrer les publications hors HAL (adapter si tes statuts sont différents)
-            mask_non_hal = result_df_rennes['Statut_HAL'].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"]) if 'Statut_HAL' in result_df_rennes.columns else result_df_rennes.index == result_df_rennes.index
-            publications_non_hal = result_df_rennes[mask_non_hal]
+            st.markdown("---")
+            st.write(f"🗂 Résultats en session pour la collection **{last_collection}** — {len(last_df)} lignes enregistrées.")
 
-            st.write(f"📚 Publications identifiées comme absentes de HAL : {len(publications_non_hal)}")
-            if len(publications_non_hal) == 0:
-                st.info("Aucune publication à exporter en XML (toutes présentes dans HAL ou filtre différent).")
+            # Filtrer seulement les publications "hors HAL" (adapter la liste des statuts si besoin)
+            if 'Statut_HAL' in last_df.columns:
+                mask_non_hal = last_df['Statut_HAL'].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"])
+                pubs_to_export = last_df[mask_non_hal].to_dict(orient='records')
+            else:
+                # si la colonne n'existe pas, laisse tout (ou change la logique)
+                pubs_to_export = last_df.to_dict(orient='records')
+            
+            st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
 
-            # Préparer la liste (liste de dicts)
-            publications_list = publications_non_hal.to_dict(orient='records')
+            # Bouton : génération du ZIP (clé unique)
+            if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
+                st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
+            try:
+                # Importer la fonction (déjà dans ton environnement)
+                zipbuf = generate_zip_from_xmls(pubs_to_export)
+                if zipbuf:
+                # stocker bytes pour survivre au rerun
+                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                    st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
+                else:
+                st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
 
-            # bouton générer (avec key unique)
-            if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_{collection_a_chercher_rennes}"):
-                st.info("➡️ Bouton cliqué : démarrage de la génération du ZIP...")
-                st.write(f"Nombre de publications à traiter : {len(publications_list)}")
-
-                try:
-                # debug : importer et afficher si la fonction existe
-                    from hal_xml_export import generate_zip_from_xmls
-                    st.write("generate_zip_from_xmls callable ? ", callable(generate_zip_from_xmls))
-
-                    zip_buffer = generate_zip_from_xmls(publications_list)
-
-                    if zip_buffer:
-                    # stocker les octets dans session_state pour survivre au rerun
-                        st.session_state['zip_buffer'] = zip_buffer.getvalue()
-                        st.success("✅ ZIP généré. Le bouton téléchargement apparaît ci-dessous.")
-                    else:
-                        st.warning("Aucun ZIP retourné par generate_zip_from_xmls (vérifier la fonction).")
-                except Exception as e:
-                    st.error(f"Erreur lors de la génération du ZIP : {e}")
-                    # log plus détaillé dans la console (si accessible)
-                    import traceback
-                    st.text(traceback.format_exc())
-
-            # Si ZIP existant, proposer download
+            # Afficher le bouton de téléchargement si présent en session
             if st.session_state.get('zip_buffer'):
                 st.download_button(
                     label="⬇️ Télécharger le fichier ZIP des XML HAL",
                     data=st.session_state['zip_buffer'],
-                    file_name=f"hal_exports_{collection_a_chercher_rennes}.zip",
+                    file_name=f"hal_exports_{last_collection}.zip",
                     mime="application/zip",
-                    key=f"download_zip_{collection_a_chercher_rennes}"
+                    key=f"download_zip_{last_collection}"
                 )
+        else:
+            # Pas de données en session : on n'affiche pas ce panneau
+            pass
+
                              
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
