@@ -274,7 +274,9 @@ def main():
                     def enrich_with_openalex_authors(openalex_results):
                         publications = []
                         for pub in openalex_results:
-                            authors_data = extract_authors_from_openalex_json(pub)
+                            # pub est l'objet 'work' renvoyé par OpenAlex
+                            authors_data = extract_authors_from_openalex_json(pub)  # désormais peut accepter un dict work
+                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
                             institutions = []
                             for a in authors_data:
                                 for aff in a.get("raw_affiliations", []):
