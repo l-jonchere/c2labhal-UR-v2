@@ -10,10 +10,8 @@ import traceback
 # Utilitaires internes
 # ==============================
 
-def safe_str(value):
-    """
-    Retourne une chaîne sûre (jamais None/NaN) utilisable comme .text d'un élément XML.
-    """
+def _safe_text(value):
+    """Retourne une chaîne sûre, encodable en UTF-8 et utilisable dans un XML (jamais None ni NaN)."""
     if value is None:
         return ""
     try:
@@ -21,18 +19,10 @@ def safe_str(value):
             return ""
     except Exception:
         pass
-    return str(value)
-
-def _safe_text(v):
-    """Renvoie une chaîne sûre (jamais NaN, None, etc.) pour le XML."""
-    if v is None:
-        return ""
     try:
-        if pd.isna(v):
-            return ""
+        return str(value)
     except Exception:
-        pass
-    return str(v)
+        return ""
 
 def _safe_filename(s, maxlen=60):
     """Nettoie le nom du fichier pour le ZIP."""
@@ -112,7 +102,7 @@ def generate_hal_xml(pub_data):
     analytic = ET.SubElement(biblStruct, "analytic")
 
     # --- Titre principal ---
-    ET.SubElement(analytic, "title", {"xml:lang": "en"}).text = safe_str(pub_data.get("Title"))
+    ET.SubElement(analytic, "title", {"xml:lang": "en"}).text = _safe_text(pub_data.get("Title"))
 
     # --- Auteurs ---
     for author in pub_data.get("authors", []):
@@ -121,27 +111,29 @@ def generate_hal_xml(pub_data):
 
         name_parts = _safe_text(author.get("name")).split(" ", 1)
         if len(name_parts) == 2:
-            ET.SubElement(persName, "forename", {"type": "first"}).text = safe_str(name_parts[0])
-            ET.SubElement(persName, "surname").text = safe_str(name_parts[1])
+            ET.SubElement(persName, "forename", {"type": "first"}).text = _safe_text(name_parts[0])
+            ET.SubElement(persName, "surname").text = _safe_text(name_parts[1])
+        elif len(name_parts) == 1:
+            ET.SubElement(persName, "surname").text = _safe_text(name_parts[1])
         else:
-            ET.SubElement(persName, "surname").text = safe_str(author.get("name"))
+            ET.SubElement(persName, "surname").text = ""
 
         if author.get("orcid"):
-            ET.SubElement(author_el, "idno", {"type": "ORCID"}).text = safe_str(author.get("orcid"))
+            ET.SubElement(author_el, "idno", {"type": "ORCID"}).text = _safe_text(author.get("orcid"))
 
         for raw_aff in author.get("raw_affiliations", []):
-            ET.SubElement(author_el, "rawAffs").text = safe_str(raw_aff)
+            ET.SubElement(author_el, "rawAffs").text = _safe_text(raw_aff)
 
     # --- Monographie / journal ---
     monogr = ET.SubElement(biblStruct, "monogr")
-    ET.SubElement(monogr, "title", {"level": "j"}).text = safe_str(pub_data.get("Source title"))
+    ET.SubElement(monogr, "title", {"level": "j"}).text = _safe_text(pub_data.get("Source title"))
     imprint = ET.SubElement(monogr, "imprint")
-    ET.SubElement(imprint, "publisher").text = safe_str(pub_data.get("publisher"))
-    ET.SubElement(imprint, "date", {"type": "datePub"}).text = safe_str(pub_data.get("Date"))
+    ET.SubElement(imprint, "publisher").text = _safe_text(pub_data.get("publisher"))
+    ET.SubElement(imprint, "date", {"type": "datePub"}).text = _safe_text(pub_data.get("Date"))
 
     # --- DOI ---
     if pub_data.get("doi"):
-        ET.SubElement(biblStruct, "idno", {"type": "doi"}).text = safe_str(pub_data.get("doi"))
+        ET.SubElement(biblStruct, "idno", {"type": "doi"}).text = _safe_text(pub_data.get("doi"))
 
     # --- Retour XML bytes ---
     xml_bytes = ET.tostring(TEI, encoding="utf-8", xml_declaration=True)
