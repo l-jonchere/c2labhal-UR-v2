@@ -503,7 +503,7 @@ def main():
                     st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
                     st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
                 else:
-                st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
+                    st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
             except Exception as e:
                 import traceback
                 st.error(f"Erreur pendant la génération du ZIP : {e}")
