@@ -303,6 +303,10 @@ def main():
                     st.write("✅ Données OpenAlex enrichies :")
                     st.dataframe(openalex_df_rennes[['Title', 'authors']].head())
 
+                    first_work = openalex_data_rennes['results'][0]
+                    authors_test = extract_authors_from_openalex_json(first_work)
+                    st.write("👥 Auteurs test :", authors_test)
+
                     # Sauvegarde directe pour l’étape XML
                     st.session_state['last_result_df'] = openalex_df_rennes.to_dict(orient='records')
                     # ---------------------------------------------------------
