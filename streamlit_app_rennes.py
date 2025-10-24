@@ -271,41 +271,6 @@ def main():
                     openalex_df_rennes = openalex_df_rennes[[col for col in cols_to_keep_rennes if col in openalex_df_rennes.columns]]
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
-                    def enrich_with_openalex_authors(openalex_results):
-                        publications = []
-                        for pub in openalex_results:
-                            # pub est l'objet 'work' renvoyé par OpenAlex
-                            authors_data = extract_authors_from_openalex_json(pub)  # désormais peut accepter un dict work
-                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
-                            institutions = []
-                            for a in authors_data:
-                                for aff in a.get("raw_affiliations", []):
-                                    institutions.append({
-                                        "display_name": aff,
-                                        "type": "institution"
-                                    })
-                            unique_institutions = [dict(t) for t in {tuple(d.items()) for d in institutions}]
-                            publications.append({
-                                "Title": pub.get("title"),
-                                "doi": pub.get("doi"),
-                                "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
-                                "Date": pub.get("publication_date"),
-                                "authors": authors_data,
-                                "institutions": unique_institutions,
-                                "Data source": "openalex"
-                            })
-                        return publications
-
-                    # Appliquer la fonction
-                    enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
-                    openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
-
-                    st.write("✅ Données OpenAlex enrichies :")
-                    st.dataframe(openalex_df_rennes[['Title', 'authors']].head())
-
-                    # Sauvegarde directe pour l’étape XML
-                    st.session_state['last_result_df'] = openalex_df_rennes.to_dict(orient='records')
-                    # ---------------------------------------------------------
                 st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
 
@@ -490,20 +455,6 @@ def main():
         except Exception as e:
             st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
-        # Vérification rapide : les auteurs ont-ils été ajoutés ?
-        if 'last_result_df' in st.session_state:
-            st.write("🔍 Vérification du contenu de st.session_state['last_result_df'] :")
-            for p in st.session_state['last_result_df'][:3]:
-                st.write(f"🧩 Publication : {p.get('Title', 'Sans titre')}")
-            if "authors" in p:
-                authors = p.get('authors') or []
-                st.write(f"Nombre d'auteurs : {len(authors)}")
-                if authors:
-                    names_preview = [a.get('name', '?') for a in authors[:3]]
-                    st.write(f"Auteurs (aperçu) : {', '.join(names_preview)}")
-            else:
-                st.warning("⚠️ Pas de clé 'authors' trouvée dans cette entrée")
-
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
@@ -541,29 +492,24 @@ def main():
             
             st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
 
-            # Debug avant génération ZIP
-            if pubs_to_export:
-                st.write("🔍 Vérification de la première publication avant génération XML :")
-                st.json(pubs_to_export[0])
-            
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
-                try:
-                    # Importer la fonction (déjà dans ton environnement)
-                    zipbuf = generate_zip_from_xmls(pubs_to_export)
-                    if zipbuf:
-                        # stocker bytes pour survivre au rerun
-                        st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                        st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
-                    else:
-                        st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
-                except Exception as e:
-                    import traceback
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
-                    st.text(traceback.format_exc())
+            try:
+                # Importer la fonction (déjà dans ton environnement)
+                zipbuf = generate_zip_from_xmls(pubs_to_export)
+                if zipbuf:
+                # stocker bytes pour survivre au rerun
+                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                    st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
+                else:
+                    st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
 
-            # Afficher le bouton de téléchargement (s’il existe déjà un ZIP)
+            # Afficher le bouton de téléchargement si présent en session
             if st.session_state.get('zip_buffer'):
                 st.download_button(
                     label="⬇️ Télécharger le fichier ZIP des XML HAL",
