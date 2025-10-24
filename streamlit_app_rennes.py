@@ -271,6 +271,33 @@ def main():
                     openalex_df_rennes = openalex_df_rennes[[col for col in cols_to_keep_rennes if col in openalex_df_rennes.columns]]
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
+                    def enrich_with_openalex_authors(openalex_results):
+                        publications = []
+                        for pub in openalex_results:
+                            authors_data = extract_authors_from_openalex_json(pub)
+                            institutions = []
+                            for a in authors_data:
+                                for aff in a.get("raw_affiliations", []):
+                                    institutions.append({
+                                        "display_name": aff,
+                                        "type": "institution"
+                                    })
+                            unique_institutions = [dict(t) for t in {tuple(d.items()) for d in institutions}]
+                            publications.append({
+                                "Title": pub.get("title"),
+                                "doi": pub.get("doi"),
+                                "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
+                                "Date": pub.get("publication_date"),
+                                "authors": authors_data,
+                                "institutions": unique_institutions,
+                                "Data source": "openalex"
+                            })
+                        return publications
+
+                    # Appliquer la fonction
+                    enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
+                    openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
+                    # ---------------------------------------------------------
                 st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
 
