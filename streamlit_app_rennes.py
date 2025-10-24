@@ -452,6 +452,8 @@ def main():
         st.write(f"Total : {len(result_df_rennes)} lignes")
         publications_list = result_df_rennes.to_dict(orient='records')
 
+        # <-- ancien bloc à supprimer ou commenter --> 
+        """
         # Générer le ZIP (bouton déclencheur, clé unique)
         if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_trigger_{collection_a_chercher_rennes}"):
             with st.spinner(f"Préparation du ZIP pour {len(publications_list)} publications..."):
@@ -473,6 +475,7 @@ def main():
                 mime="application/zip",
                 key=f"download_zip_{collection_a_chercher_rennes}"
             )
+        """
 
         # --- Export CSV classique (inchangé) ---
         if not result_df_rennes.empty:
