@@ -310,7 +310,7 @@ def main():
 
                     # Convertit en DataFrame pour l’utiliser plus tard
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
-                    
+                                
                     st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
 
