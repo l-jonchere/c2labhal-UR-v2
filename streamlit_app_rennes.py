@@ -280,6 +280,7 @@ def main():
                         for pub in openalex_results:
                             # extraction auteurs + affiliations via la fonction déjà existante
                             authors_data = extract_authors_from_openalex_json(pub)
+                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
                             # on extrait aussi les institutions uniques associées
                             institutions = []
                             for a in authors_data:
