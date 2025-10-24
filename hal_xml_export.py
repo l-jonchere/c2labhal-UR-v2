@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import streamlit as st
 import traceback
+import json
 
 # ==============================
 # Utilitaires internes
@@ -83,37 +84,106 @@ def _build_listorg_from_institutions(institutions):
 # ==============================
 # Extraction des auteurs OpenAlex
 # ==============================
-def extract_authors_from_openalex_json(openalex_authorships):
+def extract_authors_from_openalex_json(openalex_input):
     """
-    Extrait la liste des auteurs depuis la structure OpenAlex JSON (champ 'authorships').
-    Chaque auteur contient name, orcid et raw affiliations.
+    Accepts:
+      - a dict representing an OpenAlex work (will try work['authorships'])
+      - OR a list of authorship dicts
+      - OR a JSON string representing either of the above
+    Returns a list of authors in the form:
+      [{"name": ..., "orcid": ..., "raw_affiliations": [...]}, ...]
     """
+    authors_list = []
 
-    authors_data = []
+    # 1) Normalize to a python object (list/dict)
+    auths = None
+    try:
+        # If it's a dict representing the work, try to extract 'authorships'
+        if isinstance(openalex_input, dict):
+            auths = openalex_input.get('authorships') or openalex_input.get('authorships_parsed') or None
+            # some exports may already have 'authorships' flattened under a different key
+        elif isinstance(openalex_input, list):
+            auths = openalex_input
+        elif isinstance(openalex_input, str):
+            # try parse JSON string
+            try:
+                parsed = json.loads(openalex_input)
+                if isinstance(parsed, dict):
+                    auths = parsed.get('authorships') or parsed
+                else:
+                    auths = parsed
+            except Exception:
+                # it's a plain string => nothing to do
+                auths = None
+        else:
+            auths = None
+    except Exception as e:
+        st.warning(f"extract_authors_from_openalex_json: erreur normalisation input: {e}")
+        auths = None
 
+    if not auths:
+        return []  # nothing to extract
 
-    if not openalex_authorships:
-        return authors_data
-
-    for auth in openalex_authorships:
+    # 2) Iterate safely over auths and extract fields
+    for idx, auth in enumerate(auths):
         try:
-            author_entry = {
-                "name": _safe_text(auth.get("raw_author_name", "")),
-                "orcid": _safe_text(auth.get("author", {}).get("orcid", "")),
-                "raw_affiliations": []
-            }
+            # If element is a string, try to parse
+            if isinstance(auth, str):
+                try:
+                    auth = json.loads(auth)
+                except Exception:
+                    # can't parse string -> skip
+                    continue
 
-            for aff in auth.get("institutions", []):
-                raw_aff_text = aff.get("display_name", "")
-                if raw_aff_text:
-                    author_entry["raw_affiliations"].append(raw_aff_text)
+            if not isinstance(auth, dict):
+                continue
 
-            authors_data.append(author_entry)
+            # raw author name (OpenAlex uses 'raw_affiliation' for affiliation lines,
+            # but raw author name is 'raw_author_name' per earlier convention)
+            raw_name = auth.get('raw_author_name') or auth.get('author', {}).get('display_name') or auth.get('author_raw', '') or ""
+
+            # ORCID: sometimes under auth['author']['orcid'] (full url or path)
+            orcid = ""
+            try:
+                orcid = auth.get('author', {}).get('orcid') or auth.get('author_orcid') or ""
+                # normalize minimal: if it's e.g. '0000-000...' prefix with https if needed
+                if orcid and not orcid.startswith("http"):
+                    if orcid.count("-") == 3:
+                        orcid = "https://orcid.org/" + orcid
+            except Exception:
+                orcid = ""
+
+            # Raw affiliations: OpenAlex 'institutions' is a list of dicts; use their 'display_name'
+            raw_affs = []
+            insts = auth.get('institutions') or auth.get('affiliations') or []
+            if isinstance(insts, list):
+                for i in insts:
+                    if isinstance(i, dict):
+                        dn = i.get('display_name') or i.get('raw_affiliation') or ""
+                        if dn:
+                            raw_affs.append(dn)
+                    elif isinstance(i, str) and i.strip():
+                        raw_affs.append(i.strip())
+
+            # Fallback: some records include a 'raw_affiliation_strings' or similar
+            if not raw_affs:
+                # try other fields
+                possible_raws = auth.get('raw_affiliation_strings') or auth.get('raw_affiliations') or []
+                if isinstance(possible_raws, list):
+                    for r in possible_raws:
+                        if isinstance(r, str) and r.strip():
+                            raw_affs.append(r.strip())
+
+            authors_list.append({
+                "name": _safe_text(raw_name),
+                "orcid": _safe_text(orcid),
+                "raw_affiliations": [ _safe_text(r) for r in raw_affs ]
+            })
         except Exception as e:
-            st.warning(f"Erreur dans extract_authors_from_openalex_json : {e}")
+            st.warning(f"Erreur dans extract_authors_from_openalex_json pour un authorship (idx {idx}): {e}")
             continue
 
-    return authors_data
+    return authors_list
 
 # ==============================
 # Génération XML HAL (un par publication)
