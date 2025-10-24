@@ -472,6 +472,8 @@ def main():
         # <-- ancien bloc à supprimer ou commenter --> 
         """
         # Générer le ZIP (bouton déclencheur, clé unique)
+         """
+         """
         if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_trigger_{collection_a_chercher_rennes}"):
             with st.spinner(f"Préparation du ZIP pour {len(publications_list)} publications..."):
                 try:
@@ -482,8 +484,11 @@ def main():
                 except Exception as e_zip:
                     st.error(f"Erreur lors de la génération du ZIP : {e_zip}")
                     st.session_state['zip_buffer'] = None
-
+         """
+         """
         # Affichage du bouton de téléchargement uniquement si ZIP disponible
+         """
+         """
         if st.session_state.get('zip_buffer'):
             st.download_button(
                 label="⬇️ Télécharger le fichier ZIP des XML HAL",
