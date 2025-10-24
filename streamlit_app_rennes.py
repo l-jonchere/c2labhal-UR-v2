@@ -484,6 +484,16 @@ def main():
         except Exception as e:
             st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
+        # Vérification rapide : les auteurs ont-ils été ajoutés ?
+        if 'last_result_df' in st.session_state:
+            st.write("🔍 Vérification du contenu de st.session_state['last_result_df'] :")
+            for p in st.session_state['last_result_df'][:3]:
+                st.write(f"🧩 Publication : {p.get('Title', 'Sans titre')}")
+            if "authors" in p:
+                st.write(f"Nombre d'auteurs : {len(p['authors'])}")
+            else:
+                st.warning("⚠️ Pas de clé 'authors' trouvée dans cette entrée")
+
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
