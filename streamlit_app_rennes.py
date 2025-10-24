@@ -549,6 +549,11 @@ def main():
             
             st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
 
+            # Debug avant génération ZIP
+            if pubs_to_export:
+                st.write("🔍 Vérification de la première publication avant génération XML :")
+                st.json(pubs_to_export[0])
+
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
