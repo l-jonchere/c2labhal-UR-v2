@@ -116,7 +116,7 @@ def extract_authors_from_openalex_json(work):
     return authors_list
 
 """
-def extract_authors_from_openalex_json(openalex_input):
+def extract_authors_from_openalex_json(openalex_input):"""
     """
     Accepts:
       - a dict representing an OpenAlex work (will try work['authorships'])
@@ -125,6 +125,7 @@ def extract_authors_from_openalex_json(openalex_input):
     Returns a list of authors in the form:
       [{"name": ..., "orcid": ..., "raw_affiliations": [...]}, ...]
     """
+"""
     authors_list = []
 
     # 1) Normalize to a python object (list/dict)
