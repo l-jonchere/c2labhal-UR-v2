@@ -84,6 +84,38 @@ def _build_listorg_from_institutions(institutions):
 # ==============================
 # Extraction des auteurs OpenAlex
 # ==============================
+
+def extract_authors_from_openalex_json(work):
+    authors_list = []
+    if not isinstance(work, dict):
+        return authors_list
+    
+    authorships = work.get("authorships", [])
+    for auth in authorships:
+        try:
+            author_info = auth.get("author", {}) or {}
+            name = author_info.get("display_name") or auth.get("raw_author_name")
+            orcid = author_info.get("orcid", "")
+            raw_affs = []
+            for aff in auth.get("institutions", []):
+                raw_name = aff.get("display_name")
+                if raw_name:
+                    raw_affs.append(raw_name)
+            # fallback pour raw_affiliation_strings s'il existe
+            for raw_str in auth.get("raw_affiliation_strings", []) or []:
+                raw_affs.append(raw_str)
+            
+            authors_list.append({
+                "name": name,
+                "orcid": orcid,
+                "raw_affiliations": list(set(raw_affs))
+            })
+        except Exception as e:
+            st.warning(f"Erreur dans extract_authors_from_openalex_json : {e}")
+            continue
+    return authors_list
+
+"""
 def extract_authors_from_openalex_json(openalex_input):
     """
     Accepts:
@@ -184,6 +216,7 @@ def extract_authors_from_openalex_json(openalex_input):
             continue
 
     return authors_list
+"""
 
 # ==============================
 # Génération XML HAL (un par publication)
