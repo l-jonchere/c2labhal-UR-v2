@@ -501,7 +501,8 @@ def main():
             for p in st.session_state['last_result_df'][:3]:
                 st.write(f"🧩 Publication : {p.get('Title', 'Sans titre')}")
                 if "authors" in p:
-                    st.write(f"Nombre d'auteurs : {len(p['authors'])}")
+                    authors = p.get('authors') or []
+                    st.write(f"Nombre d'auteurs : {len(authors)}")
                 else:
                     st.warning("⚠️ Pas de clé 'authors' trouvée dans cette entrée")
 
