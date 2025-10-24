@@ -532,8 +532,8 @@ def main():
             last_df = pd.DataFrame(st.session_state['last_result_df'])
             last_collection = st.session_state.get('last_collection', 'unknown')
 
-        st.markdown("---")
-        st.write(f"🗂 Résultats en session pour la collection **{last_collection}** — {len(last_df)} lignes enregistrées.")
+            st.markdown("---")
+            st.write(f"🗂 Résultats en session pour la collection **{last_collection}** — {len(last_df)} lignes enregistrées.")
 
             # --- Filtrer selon Statut_HAL : seules les publications "Hors HAL" ou "Dans HAL mais hors de la collection"
             desired_statuses = {"hors hal", "dans hal mais hors de la collection"}
