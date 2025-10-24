@@ -258,6 +258,9 @@ def main():
                 progress_bar_rennes.progress(12)
                 openalex_query_complet_rennes = f"raw_affiliation_strings.search:{openalex_institution_raw_rennes},publication_year:{start_year_rennes}-{end_year_rennes}"
                 openalex_data_rennes = get_openalex_data(openalex_query_complet_rennes, max_items=5000)
+                first_work = openalex_data_rennes['results'][0]
+                authors_test = extract_authors_from_openalex_json(first_work)
+                st.write("👥 Auteurs test :", authors_test)
                 if openalex_data_rennes:
                     openalex_df_rennes = convert_to_dataframe(openalex_data_rennes, 'openalex')
                     openalex_df_rennes['Source title'] = openalex_df_rennes.apply(
