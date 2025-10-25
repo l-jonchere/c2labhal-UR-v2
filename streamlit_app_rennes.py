@@ -526,63 +526,99 @@ def main():
             )
 
         # -----------------------
-        # Panneau d'export ZIP (version simplifiée et fiable)
+        # Panneau d'export ZIP (form fiable + diagnostics)
         # -----------------------
+        import traceback, io
+
         if st.session_state.get('last_result_df') is not None:
-            # Recharger les données stockées en session
             last_df = pd.DataFrame(st.session_state['last_result_df'])
             last_collection = st.session_state.get('last_collection', 'unknown')
 
             st.markdown("---")
-            st.subheader("📦 Export des publications vers XML HAL")
+            st.subheader("?? Export des publications vers XML HAL")
             st.write(f"Collection : **{last_collection}** — {len(last_df)} lignes enregistrées.")
 
-            # 🔍 Filtrage : ne garder que les publications hors HAL ou hors collection
+            # Filtrage : ne garder que les publications hors HAL ou hors de la collection
             if 'Statut_HAL' in last_df.columns:
-                mask_non_hal = last_df['Statut_HAL'].str.lower().isin(['hors hal', 'dans hal mais hors de la collection'])
+                mask_non_hal = last_df['Statut_HAL'].fillna("").astype(str).str.lower().isin(['hors hal', 'dans hal mais hors de la collection'])
                 pubs_to_export = last_df[mask_non_hal].to_dict(orient='records')
-                st.info(f"📚 Publications sélectionnées pour export : {len(pubs_to_export)}")
+                st.info(f"?? Publications candidates pour export : {len(pubs_to_export)}")
             else:
-                st.warning("⚠️ Colonne 'Statut_HAL' absente du tableau — export de toutes les publications.")
-                pubs_to_export = last_df.to_dict(orient='records')
+                st.warning("?? Colonne 'Statut_HAL' absente — aucun filtre appliqué.")
+                pubs_to_export = []
 
-            # --- Aperçu rapide du filtrage ---
-            if pubs_to_export:
-                st.write("🧩 **Aperçu des publications sélectionnées :**")
-                for p in pubs_to_export[:3]:
-                    st.write(f"- {p.get('Title', 'Sans titre')} ({p.get('Statut_HAL', 'statut inconnu')})")
-            else:
-                st.warning("Aucune publication à exporter avec le statut demandé.")
+            # si OpenAlex enrich est disponible, réinjecter authors/institutions par DOI
+            if pubs_to_export and 'openalex_publications_raw' in st.session_state:
+                openalex_by_doi = {}
+                for p in st.session_state['openalex_publications_raw']:
+                    doi_val = (p.get('doi') or "").strip().lower()
+                    if doi_val:
+                        openalex_by_doi[doi_val] = p
+                for pub in pubs_to_export:
+                    doi_pub = (pub.get('doi') or "").strip().lower()
+                    if doi_pub and doi_pub in openalex_by_doi:
+                        oa = openalex_by_doi[doi_pub]
+                        if not pub.get('authors'):
+                            pub['authors'] = oa.get('authors', [])
+                        if not pub.get('institutions'):
+                            pub['institutions'] = oa.get('institutions', [])
 
-            # --- Bouton unique : génère et télécharge le ZIP directement ---
+            # aperçu
             if pubs_to_export:
-                if st.button(f"⬇️ Télécharger le ZIP des XML HAL ({last_collection})", key=f"zip_button_{last_collection}"):
-                    with st.spinner(f"Génération du ZIP ({len(pubs_to_export)} fichiers) ..."):
+                st.write("Aperçu (3 premiers) :")
+                preview = [{"Title": p.get("Title"), "doi": p.get("doi"), "Statut_HAL": p.get("Statut_HAL"), "nb_authors": len(p.get("authors") or [])} for p in pubs_to_export[:20]]
+                st.dataframe(pd.DataFrame(preview))
+
+                # Form pour générer le ZIP (évite reruns imprévus)
+                form_key = f"zip_form_{last_collection}"
+                with st.form(form_key):
+                    st.markdown("**Générer et télécharger le ZIP des XML HAL**")
+                    st.write(f"Nombre de publications à exporter : **{len(pubs_to_export)}**")
+                    # bouton submit du form
+                    submit = st.form_submit_button(label=f"Générer & Télécharger le ZIP ({len(pubs_to_export)})")
+
+                    if submit:
+                        # DEBUG : log des 3 premières publications envoyées à la génération
+                        st.write("?? Publications envoyées à la génération (3 premières) :")
+                        for p in pubs_to_export[:3]:
+                            st.write({
+                                "Title": p.get("Title"),
+                                "doi": p.get("doi"),
+                                "Statut_HAL": p.get("Statut_HAL"),
+                                "Action": p.get("Action"),
+                                "has_authors": bool(p.get("authors"))
+                            })
+
+                        # Génération du ZIP (dans le même run)
                         try:
-                            # 🧠 Vérification : on envoie bien les publications filtrées
-                            st.write(f"🧠 Génération XML pour {len(pubs_to_export)} publications")
-                            st.write("Exemple des 3 premières :", [p.get("Title") for p in pubs_to_export[:3]])
-
-                            # Génération du ZIP via la fonction hal_xml_export
-                            zipbuf = generate_zip_from_xmls(pubs_to_export)
-
-                            if zipbuf:
-                                st.success("✅ ZIP généré avec succès ! Cliquez ci-dessous pour le télécharger :")
-                                st.download_button(
-                                    label="💾 Télécharger le ZIP maintenant",
-                                    data=zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf,
-                                    file_name=f"hal_exports_{last_collection}.zip",
-                                    mime="application/zip",
-                                    key=f"final_download_{last_collection}"
-                                )
-                            else:
-                                st.warning("Aucun fichier généré (liste vide ou erreur silencieuse).")
+                            with st.spinner("Génération du ZIP — patientez..."):
+                                zipbuf = generate_zip_from_xmls(pubs_to_export)  # doit retourner BytesIO ou bytes
+                                if zipbuf is None:
+                                    st.error("La fonction generate_zip_from_xmls a renvoyé None.")
+                                else:
+                                    # Normaliser en bytes pour stockage en session
+                                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                                    st.success("? ZIP généré — prêt au téléchargement ci-dessous.")
                         except Exception as e:
-                            import traceback
                             st.error(f"Erreur pendant la génération du ZIP : {e}")
                             st.text(traceback.format_exc())
+
+            else:
+                st.info("Aucune publication éligible pour l'export selon Statut_HAL.")
+
+            # Afficher le bouton de téléchargement si zip_buffer présent
+            if st.session_state.get('zip_buffer'):
+                st.download_button(
+                    label=f"?? Télécharger le ZIP ({last_collection})",
+                    data=st.session_state['zip_buffer'],
+                    file_name=f"hal_exports_{last_collection}.zip",
+                    mime="application/zip",
+                    key=f"download_zip_final_{last_collection}"
+                )
+
         else:
-            st.info("⚠️ Aucune donnée enregistrée en session. Veuillez d’abord exécuter une recherche.")
+            st.info("?? Aucune recherche en session. Lancez d'abord la recherche pour récupérer des données.")
+
                                     
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
