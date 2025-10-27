@@ -541,20 +541,6 @@ def main():
             
             st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
 
-            # --- Appliquer la sanitation juste avant l'appel à generate_zip_from_xmls ---
-            for i, pub in enumerate(pubs_to_export):
-                # sanitize authors
-                raw_auth = pub.get('authors', None)
-                pub['authors'] = _ensure_authors_struct(raw_auth)
-
-                # sanitize institutions (si présent dans pub ou provenant d'OpenAlex)
-                raw_inst = pub.get('institutions', pub.get('institution', None))
-                pub['institutions'] = _ensure_institutions_struct(raw_inst)
-
-                # debug optionnel : afficher découverte d'auteurs pour quelques cas
-                if i < 3:
-                    st.write(f"DEBUG pub[{i}] titre: {pub.get('Title','')[:80]} -> {len(pub['authors'])} auteurs ; {len(pub['institutions'])} institutions")
-
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
@@ -573,6 +559,20 @@ def main():
                     st.success("✅ Données OpenAlex (auteurs + affiliations) injectées dans les publications à exporter.")
                 else:
                     st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en mémoire — les auteurs ne seront pas ajoutés.")
+
+                # --- Appliquer la sanitation juste avant l'appel à generate_zip_from_xmls ---
+                for i, pub in enumerate(pubs_to_export):
+                    # sanitize authors
+                    raw_auth = pub.get('authors', None)
+                    pub['authors'] = _ensure_authors_struct(raw_auth)
+
+                    # sanitize institutions (si présent dans pub ou provenant d'OpenAlex)
+                    raw_inst = pub.get('institutions', pub.get('institution', None))
+                    pub['institutions'] = _ensure_institutions_struct(raw_inst)
+
+                    # debug optionnel : afficher découverte d'auteurs pour quelques cas
+                    if i < 3:
+                        st.write(f"DEBUG pub[{i}] titre: {pub.get('Title','')[:80]} -> {len(pub['authors'])} auteurs ; {len(pub['institutions'])} institutions")
             
             try:
                 # Importer la fonction (déjà dans ton environnement)
