@@ -521,6 +521,106 @@ def main():
                 key=f"download_rennes_{collection_a_chercher_rennes}"
             )
 
+# -----------------------
+# Fonctions utilitaires pour assainir les auteurs/institutions
+# -----------------------
+
+def _ensure_authors_struct(auth_field):
+    """
+    Retourne une liste de dicts {'name','orcid','raw_affiliations'} à partir
+    de ce qui peut être trouvé dans auth_field (list, str JSON, str simple, None).
+    """
+    if auth_field is None:
+        return []
+    # Si c'est déjà une liste, nettoyer ses éléments
+    if isinstance(auth_field, list):
+        cleaned = []
+        for a in auth_field:
+            if isinstance(a, dict):
+                cleaned.append({
+                    "name": str(a.get("name", "")).strip(),
+                    "orcid": str(a.get("orcid", "")).strip(),
+                    "raw_affiliations": a.get("raw_affiliations") if isinstance(a.get("raw_affiliations"), list) else _ensure_list(a.get("raw_affiliations", []))
+                })
+            elif isinstance(a, str):
+                cleaned.append({"name": a.strip(), "orcid": "", "raw_affiliations": []})
+        return cleaned
+
+    # Si c'est une chaîne : tenter JSON puis ast.literal_eval, puis fallback simple
+    if isinstance(auth_field, str):
+        s = auth_field.strip()
+        # tentative JSON
+        try:
+            parsed = json.loads(s)
+            return _ensure_authors_struct(parsed)
+        except Exception:
+            pass
+        # tentative literal_eval (liste littérale python)
+        try:
+            parsed = ast.literal_eval(s)
+            return _ensure_authors_struct(parsed)
+        except Exception:
+            pass
+        # si la chaîne contient des séparateurs ';' ou '|' => découper
+        if ';' in s:
+            parts = [p.strip() for p in s.split(';') if p.strip()]
+            return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
+        if '|' in s:
+            parts = [p.strip() for p in s.split('|') if p.strip()]
+            return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
+        # fallback : unique auteur sous forme de string
+        return [{"name": s, "orcid": "", "raw_affiliations": []}]
+
+    # autre type inattendu
+    return []
+
+def _ensure_institutions_struct(inst_field):
+    """
+    Retourne une liste de dicts d'institutions {'display_name','ror','type','country'}.
+    Gère list/dict/str.
+    """
+    if inst_field is None:
+        return []
+    if isinstance(inst_field, list):
+        cleaned = []
+        for it in inst_field:
+            if isinstance(it, dict):
+                cleaned.append({
+                    "display_name": _safe_text(it.get("display_name", "")).strip(),
+                    "ror": _safe_text(it.get("ror", "")).strip(),
+                    "type": it.get("type", "institution"),
+                    "country": it.get("country", "")
+                })
+            elif isinstance(it, str):
+                cleaned.append({"display_name": it.strip(), "ror": "", "type": "institution", "country": ""})
+        return cleaned
+    if isinstance(inst_field, dict):
+        return [_ensure_institutions_struct([inst_field])[0]]
+    # str
+    s = str(inst_field).strip()
+    if not s:
+        return []
+    # si c'est 'display_name|ror' ou 'ror|display_name' possible split
+    if '|' in s:
+        parts = [p.strip() for p in s.split('|')]
+        return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
+    return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
+
+# --- Appliquer la sanitation juste avant l'appel à generate_zip_from_xmls ---
+for i, pub in enumerate(pubs_to_export):
+    # sanitize authors
+    raw_auth = pub.get('authors', None)
+    pub['authors'] = _ensure_authors_struct(raw_auth)
+
+    # sanitize institutions (si présent dans pub ou provenant d'OpenAlex)
+    raw_inst = pub.get('institutions', pub.get('institution', None))
+    pub['institutions'] = _ensure_institutions_struct(raw_inst)
+
+    # debug optionnel : afficher découverte d'auteurs pour quelques cas
+    if i < 3:
+        st.write(f"DEBUG pub[{i}] titre: {pub.get('Title','')[:80]} -> {len(pub['authors'])} auteurs ; {len(pub['institutions'])} institutions")
+
+
         # -----------------------
         # Panneau d'export ZIP (lit depuis session_state)
         # -----------------------
