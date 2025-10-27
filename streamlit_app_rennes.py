@@ -551,32 +551,32 @@ def main():
 
                 st.info("⏳ Préparation des données avant génération du ZIP...")
 
-                # Étape 1 : injecter les auteurs / institutions depuis OpenAlex si disponibles
-                if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                    oa_map = {
-                        (p.get('doi') or "").strip().lower(): p
-                        for p in st.session_state['openalex_publications_raw']
-                        if p.get('doi')
-                    }
-                    for pub in pubs_to_export:
-                        doi = (pub.get('doi') or "").strip().lower()
-                        if doi and doi in oa_map:
-                            oa_entry = oa_map[doi]
-                            pub["authors"] = oa_entry.get("authors", [])
-                            pub["institutions"] = oa_entry.get("institutions", [])
-                    st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
-                else:
-                    st.warning("⚠️ Aucune donnée OpenAlex en mémoire : les XML n’auront pas d’auteurs.")
+            # Étape 1 : injecter les auteurs / institutions depuis OpenAlex si disponibles
+            if 'openalex_publications_raw' in st.session_state and pubs_to_export:
+                oa_map = {
+                    (p.get('doi') or "").strip().lower(): p
+                    for p in st.session_state['openalex_publications_raw']
+                    if p.get('doi')
+                }
+                for pub in pubs_to_export:
+                    doi = (pub.get('doi') or "").strip().lower()
+                    if doi and doi in oa_map:
+                        oa_entry = oa_map[doi]
+                        pub["authors"] = oa_entry.get("authors", [])
+                        pub["institutions"] = oa_entry.get("institutions", [])
+                st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
+            else:
+                st.warning("⚠️ Aucune donnée OpenAlex en mémoire : les XML n’auront pas d’auteurs.")
 
-                # Étape 2 : sanitation des structures
-                for i, pub in enumerate(pubs_to_export):
-                    pub["authors"] = _ensure_authors_struct(pub.get("authors"))
-                    pub["institutions"] = _ensure_institutions_struct(pub.get("institutions"))
-                    if i < 3:
-                        st.write(
-                            f"DEBUG pub[{i}]: {pub.get('Title','')[:80]} → "
-                            f"{len(pub['authors'])} auteurs, {len(pub['institutions'])} institutions"
-                        )
+            # Étape 2 : sanitation des structures
+            for i, pub in enumerate(pubs_to_export):
+                pub["authors"] = _ensure_authors_struct(pub.get("authors"))
+                pub["institutions"] = _ensure_institutions_struct(pub.get("institutions"))
+                if i < 3:
+                    st.write(
+                        f"DEBUG pub[{i}]: {pub.get('Title','')[:80]} → "
+                        f"{len(pub['authors'])} auteurs, {len(pub['institutions'])} institutions"
+                    )
 
             # Étape 3 : génération du ZIP
             try:
