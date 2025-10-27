@@ -544,6 +544,21 @@ def main():
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
+                
+                # Si on a en mémoire les données OpenAlex enrichies, on injecte auteurs + affiliations
+                if 'openalex_publications_raw' in st.session_state:
+                    openalex_by_doi = {
+                        (p.get('doi') or '').strip().lower(): p
+                        for p in st.session_state['openalex_publications_raw']
+                        if p.get('doi')
+                    }
+                    for pub in pubs_to_export:
+                        doi_pub = (pub.get('doi') or '').strip().lower()
+                        if doi_pub in openalex_by_doi:
+                            oa_data = openalex_by_doi[doi_pub]
+                            pub['authors'] = oa_data.get('authors', [])
+                            pub['institutions'] = oa_data.get('institutions', [])
+            
             try:
                 # Importer la fonction (déjà dans ton environnement)
                 zipbuf = generate_zip_from_xmls(pubs_to_export)
