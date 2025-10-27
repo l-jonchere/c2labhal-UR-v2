@@ -602,6 +602,10 @@ def main():
             # Pas de données en session : on n'affiche pas ce panneau
             pass
 
+                                   
+        progress_bar_rennes.progress(100)
+        progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
+
 # -----------------------
 # Fonctions utilitaires pour assainir les auteurs/institutions
 # -----------------------
@@ -686,9 +690,6 @@ def _ensure_institutions_struct(inst_field):
         parts = [p.strip() for p in s.split('|')]
         return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
     return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
-                                   
-        progress_bar_rennes.progress(100)
-        progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
 
 if __name__ == "__main__":
     main()
