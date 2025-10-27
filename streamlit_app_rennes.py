@@ -604,51 +604,43 @@ def main():
 
 def _ensure_authors_struct(auth_field):
     """
-    Retourne une liste de dicts {'name','orcid','raw_affiliations'} à partir
-    de ce qui peut être trouvé dans auth_field (list, str JSON, str simple, None).
+    Transforme n'importe quelle forme de 'authors' en liste normalisée :
+    [{'name':..., 'orcid':..., 'raw_affiliations':[...]}]
     """
-    if auth_field is None:
+    import json
+
+    # Cas vide
+    if not auth_field:
         return []
-    # Si c'est déjà une liste, nettoyer ses éléments
+
+    # Si c'est déjà une liste de dicts
     if isinstance(auth_field, list):
-        cleaned = []
+        clean_list = []
         for a in auth_field:
             if isinstance(a, dict):
-                cleaned.append({
-                    "name": str(a.get("name", "")).strip(),
-                    "orcid": str(a.get("orcid", "")).strip(),
-                    "raw_affiliations": a.get("raw_affiliations") if isinstance(a.get("raw_affiliations"), list) else _ensure_list(a.get("raw_affiliations", []))
+                clean_list.append({
+                    "name": _safe_text(a.get("name", "")),
+                    "orcid": _safe_text(a.get("orcid", "")),
+                    "raw_affiliations": _ensure_list(a.get("raw_affiliations"))
                 })
             elif isinstance(a, str):
-                cleaned.append({"name": a.strip(), "orcid": "", "raw_affiliations": []})
-        return cleaned
+                # cas étrange : liste de strings
+                clean_list.append({"name": _safe_text(a), "orcid": "", "raw_affiliations": []})
+        return clean_list
 
-    # Si c'est une chaîne : tenter JSON puis ast.literal_eval, puis fallback simple
+    # Si c'est une chaîne JSON ou une string quelconque
     if isinstance(auth_field, str):
-        s = auth_field.strip()
-        # tentative JSON
         try:
-            parsed = json.loads(s)
+            parsed = json.loads(auth_field)
             return _ensure_authors_struct(parsed)
         except Exception:
-            pass
-        # tentative literal_eval (liste littérale python)
-        try:
-            parsed = ast.literal_eval(s)
-            return _ensure_authors_struct(parsed)
-        except Exception:
-            pass
-        # si la chaîne contient des séparateurs ';' ou '|' => découper
-        if ';' in s:
-            parts = [p.strip() for p in s.split(';') if p.strip()]
+            # plain string (ex: "John Doe, Jane Smith")
+            parts = [p.strip() for p in auth_field.split(",") if p.strip()]
             return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
-        if '|' in s:
-            parts = [p.strip() for p in s.split('|') if p.strip()]
-            return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
-        # fallback : unique auteur sous forme de string
-        return [{"name": s, "orcid": "", "raw_affiliations": []}]
 
-    # autre type inattendu
+    # Sinon : cas inattendu (dict unique, None, etc.)
+    if isinstance(auth_field, dict):
+        return [_ensure_authors_struct(auth_field)]
     return []
 
 def _ensure_institutions_struct(inst_field):
