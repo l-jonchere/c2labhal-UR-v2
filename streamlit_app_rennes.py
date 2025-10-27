@@ -2,6 +2,7 @@ import os  # Pour la variable d'environnement NCBI_API_KEY
 import streamlit as st
 import pandas as pd
 import io
+import ast, json
 
 # Importer les fonctions et constantes partagées depuis utils.py
 from utils import (
