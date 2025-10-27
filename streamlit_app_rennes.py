@@ -258,10 +258,14 @@ def main():
                 progress_bar_rennes.progress(12)
                 openalex_query_complet_rennes = f"raw_affiliation_strings.search:{openalex_institution_raw_rennes},publication_year:{start_year_rennes}-{end_year_rennes}"
                 openalex_data_rennes = get_openalex_data(openalex_query_complet_rennes, max_items=5000)
+
                 if openalex_data_rennes:
                     openalex_df_rennes = convert_to_dataframe(openalex_data_rennes, 'openalex')
                     openalex_df_rennes['Source title'] = openalex_df_rennes.apply(
-                        lambda row: row.get('primary_location', {}).get('source', {}).get('display_name') if isinstance(row.get('primary_location'), dict) and row['primary_location'].get('source') else None, axis=1
+                        lambda row: row.get('primary_location', {}).get('source', {}).get('display_name')
+                        if isinstance(row.get('primary_location'), dict) and row['primary_location'].get('source')
+                        else None,
+                        axis=1
                     )
                     openalex_df_rennes['Date'] = openalex_df_rennes.get('publication_date', pd.Series(index=openalex_df_rennes.index, dtype='object'))
                     openalex_df_rennes['doi'] = openalex_df_rennes.get('doi', pd.Series(index=openalex_df_rennes.index, dtype='object'))
@@ -269,9 +273,54 @@ def main():
                     openalex_df_rennes['Title'] = openalex_df_rennes.get('title', pd.Series(index=openalex_df_rennes.index, dtype='object'))
                     cols_to_keep_rennes = ['Data source', 'Title', 'doi', 'id', 'Source title', 'Date']
                     openalex_df_rennes = openalex_df_rennes[[col for col in cols_to_keep_rennes if col in openalex_df_rennes.columns]]
+
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
-                st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
+
+                    # 🧩 ---- Bloc d’enrichissement à insérer ici ----
+                    def enrich_with_openalex_authors(openalex_results):
+                        publications = []
+                        for pub in openalex_results:
+                            try:
+                                authors_data = extract_authors_from_openalex_json(pub)
+                            except Exception as e:
+                                st.warning(f"Erreur dans extract_authors_from_openalex_json pour {pub.get('id', 'inconnu')}: {e}")
+                                authors_data = []
+
+                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
+
+                            institutions = []
+                            for a in authors_data:
+                                for aff in a.get("raw_affiliations", []):
+                                    institutions.append({
+                                        "display_name": aff,
+                                        "type": "institution"
+                                    })
+                            unique_institutions = [dict(t) for t in {tuple(d.items()) for d in institutions}]
+
+                            publications.append({
+                                "Title": pub.get("title"),
+                                "doi": pub.get("doi"),
+                                "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
+                                "Date": pub.get("publication_date"),
+                                "authors": authors_data,
+                                "institutions": unique_institutions,
+                                "Data source": "openalex"
+                            })
+                        return publications
+
+                    # Application de la fonction d’enrichissement
+                    enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
+                    st.session_state['openalex_publications_raw'] = enriched_publications_rennes
+                    st.info(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
+
+                    openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
+                    st.write("🧩 Données OpenAlex enrichies :", openalex_df_rennes.head(2))
+                    # 🧩 ---- Fin du bloc d’enrichissement ----
+
+                    # ✅ Et c’est ici que tu gardes ta ligne d’origine :
+                    st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
+
         progress_bar_rennes.progress(15)
 
         # --- Étape 2 : Récupération PubMed ---
