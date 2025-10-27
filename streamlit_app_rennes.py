@@ -557,7 +557,7 @@ def main():
                         (p.get('doi') or "").strip().lower(): p
                         for p in st.session_state['openalex_publications_raw']
                         if p.get('doi')
-                    }
+                        }
                     for pub in pubs_to_export:
                         doi = (pub.get('doi') or "").strip().lower()
                         if doi and doi in oa_map:
