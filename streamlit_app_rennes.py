@@ -573,15 +573,15 @@ def main():
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
                     st.text(traceback.format_exc())
 
-            # Bouton de téléchargement (s'affiche après génération)
-            if st.session_state.get('zip_buffer'):
-                st.download_button(
-                    label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                    data=st.session_state['zip_buffer'],
-                    file_name=f"hal_exports_{last_collection}.zip",
-                    mime="application/zip",
-                    key=f"download_zip_{last_collection}"
-                )
+                # Bouton de téléchargement (s'affiche après génération)
+                if st.session_state.get('zip_buffer'):
+                    st.download_button(
+                        label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                        data=st.session_state['zip_buffer'],
+                        file_name=f"hal_exports_{last_collection}.zip",
+                        mime="application/zip",
+                        key=f"download_zip_{last_collection}"
+                    )
         else:
             # Pas de données en session : on n'affiche pas ce panneau
             pass
