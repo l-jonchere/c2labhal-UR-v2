@@ -553,11 +553,11 @@ def main():
 
                 # Étape 1 : injecter les auteurs / institutions depuis OpenAlex si disponibles
                 if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                            oa_map = {
+                    oa_map = {
                         (p.get('doi') or "").strip().lower(): p
                         for p in st.session_state['openalex_publications_raw']
                         if p.get('doi')
-                        }
+                    }
                     for pub in pubs_to_export:
                         doi = (pub.get('doi') or "").strip().lower()
                         if doi and doi in oa_map:
