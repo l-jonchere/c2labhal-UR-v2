@@ -566,6 +566,10 @@ def main():
                 pub['authors'] = _ensure_authors_struct(pub.get('authors'))
                 pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
 
+            # debug
+            for i, pub in enumerate(pubs_to_export[:3]):
+                st.write(f"DEBUG pub[{i}] → authors={type(pub.get('authors'))}, institutions={type(pub.get('institutions'))}")
+
         # 3) generate ZIP
         try:
             with st.spinner("Génération du ZIP en cours..."):
