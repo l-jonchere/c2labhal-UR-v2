@@ -547,6 +547,7 @@ def main():
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
         # Unique visible button (génère le ZIP)
+        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
         # 1️⃣ Injection auteurs / affiliations depuis OpenAlex si disponibles
         if 'openalex_publications_raw' in st.session_state and pubs_to_export:
             openalex_data = st.session_state['openalex_publications_raw']
@@ -576,11 +577,6 @@ def main():
             st.success(f"✅ Données OpenAlex injectées : {found} correspondances DOI, {missed} sans correspondance.")
         else:
             st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en session.")
-
-            # 2) sanitize structures
-            for pub in pubs_to_export:
-                pub['authors'] = _ensure_authors_struct(pub.get('authors'))
-                pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
 
         # debug
         for i, pub in enumerate(pubs_to_export[:3]):
