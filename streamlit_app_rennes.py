@@ -508,20 +508,6 @@ def main():
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
 
-        # --- Appliquer la sanitation juste avant l'appel à generate_zip_from_xmls ---
-        for i, pub in enumerate(pubs_to_export):
-            # sanitize authors
-            raw_auth = pub.get('authors', None)
-            pub['authors'] = _ensure_authors_struct(raw_auth)
-
-            # sanitize institutions (si présent dans pub ou provenant d'OpenAlex)
-            raw_inst = pub.get('institutions', pub.get('institution', None))
-            pub['institutions'] = _ensure_institutions_struct(raw_inst)
-
-            # debug optionnel : afficher découverte d'auteurs pour quelques cas
-            if i < 3:
-                st.write(f"DEBUG pub[{i}] titre: {pub.get('Title','')[:80]} -> {len(pub['authors'])} auteurs ; {len(pub['institutions'])} institutions")
-
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
@@ -554,6 +540,20 @@ def main():
                 pubs_to_export = last_df.to_dict(orient='records')
             
             st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
+
+            # --- Appliquer la sanitation juste avant l'appel à generate_zip_from_xmls ---
+            for i, pub in enumerate(pubs_to_export):
+                # sanitize authors
+                raw_auth = pub.get('authors', None)
+                pub['authors'] = _ensure_authors_struct(raw_auth)
+
+                # sanitize institutions (si présent dans pub ou provenant d'OpenAlex)
+                raw_inst = pub.get('institutions', pub.get('institution', None))
+                pub['institutions'] = _ensure_institutions_struct(raw_inst)
+
+                # debug optionnel : afficher découverte d'auteurs pour quelques cas
+                if i < 3:
+                    st.write(f"DEBUG pub[{i}] titre: {pub.get('Title','')[:80]} -> {len(pub['authors'])} auteurs ; {len(pub['institutions'])} institutions")
 
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
