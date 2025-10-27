@@ -316,6 +316,9 @@ def main():
                     st.session_state['openalex_publications_raw'] = enriched_publications_rennes
                     st.info(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
 
+                    st.write("🔍 Vérification enrich_with_openalex_authors()")
+                    st.json(enriched_publications_rennes[0])
+
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
                     st.write("🧩 Données OpenAlex enrichies :", openalex_df_rennes.head(2))
                     # 🧩 ---- Fin du bloc d’enrichissement ----
