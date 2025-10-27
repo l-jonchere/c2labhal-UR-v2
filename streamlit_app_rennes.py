@@ -544,19 +544,36 @@ def main():
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
-            try:
-                # Importer la fonction (déjà dans ton environnement)
-                zipbuf = generate_zip_from_xmls(pubs_to_export)
-                if zipbuf:
-                # stocker bytes pour survivre au rerun
-                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                    st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
+                
+                # 🧩 Étape 2 : si on a des données OpenAlex enrichies, on injecte les auteurs et affiliations
+                if 'openalex_publications_raw' in st.session_state:
+                    openalex_data = st.session_state['openalex_publications_raw']
+                    # Indexation par DOI pour faciliter la fusion
+                    oa_map = {p.get('doi'): p for p in openalex_data if p.get('doi')}
+                    for pub in pubs_to_export:
+                        doi = pub.get('doi')
+                        if doi and doi in oa_map:
+                            oa_entry = oa_map[doi]
+                            pub['authors'] = oa_entry.get('authors', [])
+                            pub['institutions'] = oa_entry.get('institutions', [])
+                    st.success("✅ Données OpenAlex (auteurs + affiliations) injectées dans les publications à exporter.")
                 else:
-                    st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
-            except Exception as e:
-                import traceback
-                st.error(f"Erreur pendant la génération du ZIP : {e}")
-                st.text(traceback.format_exc())
+                    st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en mémoire — les auteurs ne seront pas ajoutés.")
+
+            # 🧩 Étape suivante : génération effective du ZIP
+                    try:
+                        # Importer la fonction (déjà dans ton environnement)
+                        zipbuf = generate_zip_from_xmls(pubs_to_export)
+                        if zipbuf:
+                        # stocker bytes pour survivre au rerun
+                            st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                            st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
+                        else:
+                            st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
+                    except Exception as e:
+                        import traceback
+                        st.error(f"Erreur pendant la génération du ZIP : {e}")
+                        st.text(traceback.format_exc())
 
             # Afficher le bouton de téléchargement si présent en session
             if st.session_state.get('zip_buffer'):
