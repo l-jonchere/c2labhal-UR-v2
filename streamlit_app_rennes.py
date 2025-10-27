@@ -546,25 +546,25 @@ def main():
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-            # Unique visible button (génère le ZIP)
-            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
-                # 1) injecter auteurs/institutions depuis OpenAlex si disponibles
-                if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                    oa_map = { (p.get('doi') or "").strip().lower(): p for p in st.session_state['openalex_publications_raw'] if p.get('doi') }
-                    for pub in pubs_to_export:
-                        doi = (pub.get('doi') or "").strip().lower()
-                        if doi and doi in oa_map:
-                            oa_entry = oa_map[doi]
-                            pub['authors'] = oa_entry.get('authors', [])
-                            pub['institutions'] = oa_entry.get('institutions', [])
-                    st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
-                else:
-                    st.info("ℹ️ Pas de données OpenAlex en session — les XML pourront être sans auteurs.")
-
-                # 2) sanitize structures
+        # Unique visible button (génère le ZIP)
+        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+            # 1) injecter auteurs/institutions depuis OpenAlex si disponibles
+            if 'openalex_publications_raw' in st.session_state and pubs_to_export:
+                oa_map = { (p.get('doi') or "").strip().lower(): p for p in st.session_state['openalex_publications_raw'] if p.get('doi') }
                 for pub in pubs_to_export:
-                    pub['authors'] = _ensure_authors_struct(pub.get('authors'))
-                    pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
+                    doi = (pub.get('doi') or "").strip().lower()
+                    if doi and doi in oa_map:
+                        oa_entry = oa_map[doi]
+                        pub['authors'] = oa_entry.get('authors', [])
+                        pub['institutions'] = oa_entry.get('institutions', [])
+                st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
+            else:
+                st.info("ℹ️ Pas de données OpenAlex en session — les XML pourront être sans auteurs.")
+
+            # 2) sanitize structures
+            for pub in pubs_to_export:
+                pub['authors'] = _ensure_authors_struct(pub.get('authors'))
+                pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
 
             # 3) generate ZIP
             try:
