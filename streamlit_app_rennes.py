@@ -575,19 +575,19 @@ def main():
                     if i < 3:
                         st.write(f"DEBUG pub[{i}] titre: {pub.get('Title','')[:80]} -> {len(pub['authors'])} auteurs ; {len(pub['institutions'])} institutions")
             
-            try:
-                # Importer la fonction (déjà dans ton environnement)
-                zipbuf = generate_zip_from_xmls(pubs_to_export)
-                if zipbuf:
-                # stocker bytes pour survivre au rerun
-                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                    st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
-                else:
-                    st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
-            except Exception as e:
-                import traceback
-                st.error(f"Erreur pendant la génération du ZIP : {e}")
-                st.text(traceback.format_exc())
+                try:
+                    # Importer la fonction (déjà dans ton environnement)
+                    zipbuf = generate_zip_from_xmls(pubs_to_export)
+                    if zipbuf:
+                    # stocker bytes pour survivre au rerun
+                        st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                        st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
+                    else:
+                        st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
+                except Exception as e:
+                    import traceback
+                    st.error(f"Erreur pendant la génération du ZIP : {e}")
+                    st.text(traceback.format_exc())
 
             # Afficher le bouton de téléchargement si présent en session
             if st.session_state.get('zip_buffer'):
