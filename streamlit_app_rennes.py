@@ -544,7 +544,10 @@ def main():
 
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
-                st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
+                st.session_state['generate_zip_triggered'] = True
+
+            if st.session_state.get('generate_zip_triggered'):
+                st.write("🧩 Bouton cliqué — exécution persistante")
 
                 # 🧩 Étape 2 : si on a des données OpenAlex enrichies, on injecte les auteurs et affiliations
                 if 'openalex_publications_raw' in st.session_state:
@@ -588,6 +591,9 @@ def main():
                     import traceback
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
                     st.text(traceback.format_exc())
+
+                # 4️⃣ Réinitialiser le flag
+                st.session_state['generate_zip_triggered'] = False
 
             # Afficher le bouton de téléchargement si présent en session
             if st.session_state.get('zip_buffer'):
