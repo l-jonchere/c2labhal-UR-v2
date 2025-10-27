@@ -586,30 +586,30 @@ def main():
                     if i < 3:
                         st.write(f"DEBUG pub[{i}]: {pub.get('Title','')[:80]} → {len(pub['authors'])} auteurs, {len(pub['institutions'])} institutions")
 
-                # Génération du ZIP — attraper toutes les exceptions et afficher trace
-                try:
-                    with st.spinner("Génération du ZIP en cours..."):
-                        zipbuf = generate_zip_from_xmls(pubs_to_export)
-                        if zipbuf:
-                            # normaliser en bytes
-                            st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                            st.success("✅ ZIP généré, prêt au téléchargement.")
-                            # Afficher bouton de download immédiatement
-                            st.download_button(
-                                label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                                data=st.session_state['zip_buffer'],
-                                file_name=f"hal_exports_{last_collection}.zip",
-                                mime="application/zip",
-                                key=f"download_zip_{last_collection}"
-                            )
-                        else:
-                            st.error("La fonction generate_zip_from_xmls a renvoyé None ou un objet vide.")
-                except Exception as e:
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
-                    st.text(traceback.format_exc())
-                finally:
-                    # réinitialiser le flag pour éviter de relancer automatiquement plusieurs fois
-                    st.session_state['generate_zip_triggered'] = False
+            # Génération du ZIP — attraper toutes les exceptions et afficher trace
+            try:
+                with st.spinner("Génération du ZIP en cours..."):
+                    zipbuf = generate_zip_from_xmls(pubs_to_export)
+                    if zipbuf:
+                        # normaliser en bytes
+                        st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                        st.success("✅ ZIP généré, prêt au téléchargement.")
+                        # Afficher bouton de download immédiatement
+                        st.download_button(
+                            label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                            data=st.session_state['zip_buffer'],
+                            file_name=f"hal_exports_{last_collection}.zip",
+                            mime="application/zip",
+                            key=f"download_zip_{last_collection}"
+                        )
+                    else:
+                        st.error("La fonction generate_zip_from_xmls a renvoyé None ou un objet vide.")
+            except Exception as e:
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
+            finally:
+                # réinitialiser le flag pour éviter de relancer automatiquement plusieurs fois
+                st.session_state['generate_zip_triggered'] = False
 
         else:
             st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche pour récupérer des données.")
