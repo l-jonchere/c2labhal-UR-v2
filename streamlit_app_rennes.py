@@ -484,7 +484,7 @@ def main():
 
             # Filtrer seulement les publications "hors HAL" (adapter la liste des statuts si besoin)
             if 'Statut_HAL' in last_df.columns:
-                mask_non_hal = last_df['Statut_HAL'].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"])
+                mask_non_hal = last_df['Statut_HAL'].isin(["Hors HAL", "Dans HAL mais hors de la collection"])
                 pubs_to_export = last_df[mask_non_hal].to_dict(orient='records')
             else:
                 # si la colonne n'existe pas, laisse tout (ou change la logique)
