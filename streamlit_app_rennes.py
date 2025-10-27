@@ -501,6 +501,31 @@ def main():
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
+
+        # --- Fusionner les auteurs/institutions dans le DataFrame final ---
+        if 'doi' in result_df_rennes.columns:
+            def normalize_doi(doi):
+                if not doi:
+                    return ""
+                return str(doi).lower().strip().replace("https://doi.org/", "").replace("http://doi.org/", "").replace("doi:", "")
+
+            oa_map = {normalize_doi(p.get('doi')): p for p in enriched_publications_rennes if p.get('doi')}
+
+            merged_records = []
+            for rec in result_df_rennes.to_dict(orient='records'):
+                doi = normalize_doi(rec.get('doi'))
+                if doi in oa_map:
+                    oa_entry = oa_map[doi]
+                    rec['authors'] = oa_entry.get('authors', [])
+                    rec['institutions'] = oa_entry.get('institutions', [])
+                merged_records.append(rec)
+
+            result_df_rennes = pd.DataFrame(merged_records)
+            st.success(f"✅ Fusion effectuée : {sum('authors' in r for r in merged_records)} notices avec auteurs.")
+        else:
+            st.warning("⚠️ Aucun DOI trouvé dans result_df_rennes : fusion impossible.")
+
+        
         # --- Sauvegarde persistante des résultats pour permettre les actions après rerun ---
         try:
             st.session_state['last_result_df'] = result_df_rennes.to_dict(orient='records')
