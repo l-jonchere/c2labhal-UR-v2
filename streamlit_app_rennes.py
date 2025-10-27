@@ -578,30 +578,30 @@ def main():
                             f"{len(pub['authors'])} auteurs, {len(pub['institutions'])} institutions"
                         )
 
-                # Étape 3 : génération du ZIP
-                try:
-                    with st.spinner("Génération du ZIP en cours..."):
-                        zipbuf = generate_zip_from_xmls(pubs_to_export)
+            # Étape 3 : génération du ZIP
+            try:
+                with st.spinner("Génération du ZIP en cours..."):
+                    zipbuf = generate_zip_from_xmls(pubs_to_export)
 
-                        if zipbuf:
-                            st.session_state["zip_buffer"] = (
-                                zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                            )
-                            st.success("✅ ZIP généré avec succès !")
+                    if zipbuf:
+                        st.session_state["zip_buffer"] = (
+                            zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                        )
+                        st.success("✅ ZIP généré avec succès !")
 
-                            st.download_button(
-                                label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                                data=st.session_state["zip_buffer"],
-                                file_name=f"hal_exports_{last_collection}.zip",
-                                mime="application/zip",
-                                key=f"download_zip_{last_collection}",
-                            )
-                        else:
-                            st.error("Aucun fichier généré (zipbuf vide ou None).")
-                except Exception as e:
-                    import traceback
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
-                    st.text(traceback.format_exc())
+                        st.download_button(
+                            label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                            data=st.session_state["zip_buffer"],
+                            file_name=f"hal_exports_{last_collection}.zip",
+                            mime="application/zip",
+                            key=f"download_zip_{last_collection}",
+                        )
+                    else:
+                        st.error("Aucun fichier généré (zipbuf vide ou None).")
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
 
         else:
             st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
