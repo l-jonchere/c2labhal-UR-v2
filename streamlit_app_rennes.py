@@ -2,7 +2,6 @@ import os  # Pour la variable d'environnement NCBI_API_KEY
 import streamlit as st
 import pandas as pd
 import io
-import ast, json
 
 # Importer les fonctions et constantes partagées depuis utils.py
 from utils import (
@@ -259,14 +258,10 @@ def main():
                 progress_bar_rennes.progress(12)
                 openalex_query_complet_rennes = f"raw_affiliation_strings.search:{openalex_institution_raw_rennes},publication_year:{start_year_rennes}-{end_year_rennes}"
                 openalex_data_rennes = get_openalex_data(openalex_query_complet_rennes, max_items=5000)
-
                 if openalex_data_rennes:
                     openalex_df_rennes = convert_to_dataframe(openalex_data_rennes, 'openalex')
                     openalex_df_rennes['Source title'] = openalex_df_rennes.apply(
-                        lambda row: row.get('primary_location', {}).get('source', {}).get('display_name')
-                        if isinstance(row.get('primary_location'), dict) and row['primary_location'].get('source')
-                        else None,
-                        axis=1
+                        lambda row: row.get('primary_location', {}).get('source', {}).get('display_name') if isinstance(row.get('primary_location'), dict) and row['primary_location'].get('source') else None, axis=1
                     )
                     openalex_df_rennes['Date'] = openalex_df_rennes.get('publication_date', pd.Series(index=openalex_df_rennes.index, dtype='object'))
                     openalex_df_rennes['doi'] = openalex_df_rennes.get('doi', pd.Series(index=openalex_df_rennes.index, dtype='object'))
@@ -274,54 +269,9 @@ def main():
                     openalex_df_rennes['Title'] = openalex_df_rennes.get('title', pd.Series(index=openalex_df_rennes.index, dtype='object'))
                     cols_to_keep_rennes = ['Data source', 'Title', 'doi', 'id', 'Source title', 'Date']
                     openalex_df_rennes = openalex_df_rennes[[col for col in cols_to_keep_rennes if col in openalex_df_rennes.columns]]
-
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
-
-                    # 🧩 ---- Bloc d’enrichissement à insérer ici ----
-                    def enrich_with_openalex_authors(openalex_results):
-                        publications = []
-                        for pub in openalex_results:
-                            try:
-                                authors_data = extract_authors_from_openalex_json(pub)
-                            except Exception as e:
-                                st.warning(f"Erreur dans extract_authors_from_openalex_json pour {pub.get('id', 'inconnu')}: {e}")
-                                authors_data = []
-
-                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
-
-                            institutions = []
-                            for a in authors_data:
-                                for aff in a.get("raw_affiliations", []):
-                                    institutions.append({
-                                        "display_name": aff,
-                                        "type": "institution"
-                                    })
-                            unique_institutions = [dict(t) for t in {tuple(d.items()) for d in institutions}]
-
-                            publications.append({
-                                "Title": pub.get("title"),
-                                "doi": pub.get("doi"),
-                                "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
-                                "Date": pub.get("publication_date"),
-                                "authors": authors_data,
-                                "institutions": unique_institutions,
-                                "Data source": "openalex"
-                            })
-                        return publications
-
-                    # Application de la fonction d’enrichissement
-                    enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
-                    st.session_state['openalex_publications_raw'] = enriched_publications_rennes
-                    st.info(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
-
-                    openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
-                    st.write("🧩 Données OpenAlex enrichies :", openalex_df_rennes.head(2))
-                    # 🧩 ---- Fin du bloc d’enrichissement ----
-
-                    # ✅ Et c’est ici que tu gardes ta ligne d’origine :
-                    st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
-
+                st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
 
         # --- Étape 2 : Récupération PubMed ---
@@ -505,7 +455,6 @@ def main():
         except Exception as e:
             st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
-
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
@@ -522,7 +471,6 @@ def main():
                 key=f"download_rennes_{collection_a_chercher_rennes}"
             )
 
-
         # -----------------------
         # Panneau d'export ZIP (lit depuis session_state)
         # -----------------------
@@ -536,7 +484,7 @@ def main():
 
             # Filtrer seulement les publications "hors HAL" (adapter la liste des statuts si besoin)
             if 'Statut_HAL' in last_df.columns:
-                mask_non_hal = last_df['Statut_HAL'].isin(["Hors HAL", "Dans HAL mais hors de la collection"])
+                mask_non_hal = last_df['Statut_HAL'].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"])
                 pubs_to_export = last_df[mask_non_hal].to_dict(orient='records')
             else:
                 # si la colonne n'existe pas, laisse tout (ou change la logique)
@@ -547,23 +495,6 @@ def main():
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
-                
-                # 🧩 Étape 2 : si on a des données OpenAlex enrichies, on injecte les auteurs et affiliations
-                if 'openalex_publications_raw' in st.session_state:
-                    openalex_data = st.session_state['openalex_publications_raw']
-                    # Indexation par DOI pour faciliter la fusion
-                    oa_map = {p.get('doi'): p for p in openalex_data if p.get('doi')}
-                    for pub in pubs_to_export:
-                        doi = pub.get('doi')
-                        if doi and doi in oa_map:
-                            oa_entry = oa_map[doi]
-                            pub['authors'] = oa_entry.get('authors', [])
-                            pub['institutions'] = oa_entry.get('institutions', [])
-                    st.success("✅ Données OpenAlex (auteurs + affiliations) injectées dans les publications à exporter.")
-                else:
-                    st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en mémoire — les auteurs ne seront pas ajoutés.")
-
-            # 🧩 Étape suivante : génération effective du ZIP
             try:
                 # Importer la fonction (déjà dans ton environnement)
                 zipbuf = generate_zip_from_xmls(pubs_to_export)
@@ -591,40 +522,9 @@ def main():
             # Pas de données en session : on n'affiche pas ce panneau
             pass
 
-            # Bouton : génération du ZIP (clé unique)
-            if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
-                st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
-                try:
-                    # Importer la fonction (déjà dans ton environnement)
-                    zipbuf = generate_zip_from_xmls(pubs_to_export)
-                    if zipbuf:
-                        # stocker bytes pour survivre au rerun
-                        st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                        st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
-                    else:
-                        st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
-                except Exception as e:
-                    import traceback
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
-                    st.text(traceback.format_exc())
-
-            # Afficher le bouton de téléchargement si présent en session
-            if st.session_state.get('zip_buffer'):
-                st.download_button(
-                    label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                    data=st.session_state['zip_buffer'],
-                    file_name=f"hal_exports_{last_collection}.zip",
-                    mime="application/zip",
-                    key=f"download_zip_{last_collection}"
-                )
-        else:
-            # Pas de données en session : on n'affiche pas ce panneau
-            pass
-
                              
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
-
 
 if __name__ == "__main__":
     main()
