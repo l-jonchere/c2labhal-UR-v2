@@ -271,50 +271,7 @@ def main():
                     openalex_df_rennes = openalex_df_rennes[[col for col in cols_to_keep_rennes if col in openalex_df_rennes.columns]]
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
-                        
-                    # --- Extraction des auteurs et affiliations depuis les métadonnées OpenAlex ---
-                    # On ajoute une colonne 'authors' et une colonne 'institutions' pour le XML HAL
-
-                    def enrich_with_openalex_authors(openalex_results):
-                        publications = []
-                        for pub in openalex_results:
-                            # extraction auteurs + affiliations via la fonction déjà existante
-                            authors_data = extract_authors_from_openalex_json(pub)
-                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
-                            # on extrait aussi les institutions uniques associées
-                            institutions = []
-                            for a in authors_data:
-                                for aff in a.get("raw_affiliations", []):
-                                    # ici tu pourrais essayer de reconnaître un ROR dans la chaîne brute
-                                    # mais pour l’instant on crée une structure simple
-                                    institutions.append({
-                                        "display_name": aff,
-                                        "type": "institution"
-                                    })
-                            # supprime doublons
-                            unique_institutions = [dict(t) for t in {tuple(d.items()) for d in institutions}]
-
-                            publications.append({
-                                "Title": pub.get("title"),
-                                "doi": pub.get("doi"),
-                                "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
-                                "Date": pub.get("publication_date"),
-                                "authors": authors_data,
-                                "institutions": unique_institutions,
-                                "Data source": "openalex"
-                            })
-                        return publications
-
-                    # Applique la fonction
-                    enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
-
-                    # ✅ On garde la liste originale des dicts (pas de DataFrame ici)
-                    st.session_state['openalex_publications_raw'] = enriched_publications_rennes
-                    
-                    # Sauvegarde directe pour l’étape XML
-                    st.session_state['last_result_df'] = openalex_df_rennes.to_dict(orient='records')
-
-                    st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
+                st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
         progress_bar_rennes.progress(15)
 
         # --- Étape 2 : Récupération PubMed ---
@@ -498,17 +455,6 @@ def main():
         except Exception as e:
             st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
-        # Vérification rapide : les auteurs ont-ils été ajoutés ?
-        if 'last_result_df' in st.session_state:
-            st.write("🔍 Vérification du contenu de st.session_state['last_result_df'] :")
-            for p in st.session_state['last_result_df'][:3]:
-                st.write(f"🧩 Publication : {p.get('Title', 'Sans titre')}")
-                if "authors" in p:
-                    authors = p.get('authors') or []
-                    st.write(f"Nombre d'auteurs : {len(authors)}")
-                else:
-                    st.warning("⚠️ Pas de clé 'authors' trouvée dans cette entrée")
-
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
@@ -526,93 +472,57 @@ def main():
             )
 
         # -----------------------
-        # Panneau unique : générer et télécharger ZIP des XML HAL (1 bouton)
+        # Panneau d'export ZIP (lit depuis session_state)
         # -----------------------
         if st.session_state.get('last_result_df') is not None:
+        # Reconstruire un DataFrame local pour affichage/filtrage si besoin
             last_df = pd.DataFrame(st.session_state['last_result_df'])
             last_collection = st.session_state.get('last_collection', 'unknown')
 
             st.markdown("---")
             st.write(f"🗂 Résultats en session pour la collection **{last_collection}** — {len(last_df)} lignes enregistrées.")
 
-            # --- Filtrer selon Statut_HAL : seules les publications "Hors HAL" ou "Dans HAL mais hors de la collection"
-            desired_statuses = {"hors hal", "dans hal mais hors de la collection"}
-            pubs_to_export = []
+            # Filtrer seulement les publications "hors HAL" (adapter la liste des statuts si besoin)
             if 'Statut_HAL' in last_df.columns:
-                last_df['_statut_hal_norm'] = last_df['Statut_HAL'].fillna("").astype(str).str.lower().str.strip()
-                mask_export = last_df['_statut_hal_norm'].isin(desired_statuses)
-                pubs_to_export = last_df[mask_export].to_dict(orient='records')
-                st.info(f"📄Publications sélectionnées pour export (Statut_HAL in {list(desired_statuses)}): {len(pubs_to_export)}")
+                mask_non_hal = last_df['Statut_HAL'].isin(["Hors HAL", "Titre invalide", "Pas de DOI valide"])
+                pubs_to_export = last_df[mask_non_hal].to_dict(orient='records')
             else:
-                st.warning("⚠️ Colonne 'Statut_HAL' absente : impossible de filtrer. Aucune publication sélectionnée.")
+                # si la colonne n'existe pas, laisse tout (ou change la logique)
+                pubs_to_export = last_df.to_dict(orient='records')
+            
+            st.write(f"📚 Publications sélectionnées pour export XML (hors HAL) : {len(pubs_to_export)}")
 
-            # --- Réinjecter authors/institutions depuis openalex_publications_raw si présent en session (par DOI)
-            if pubs_to_export and 'openalex_publications_raw' in st.session_state:
-                openalex_by_doi = {}
-                for p in st.session_state['openalex_publications_raw']:
-                    doi_val = (p.get('doi') or "").strip().lower()
-                    if doi_val:
-                        openalex_by_doi[doi_val] = p
-                for pub in pubs_to_export:
-                    doi_pub = (pub.get('doi') or "").strip().lower()
-                    if doi_pub and doi_pub in openalex_by_doi:
-                        oa = openalex_by_doi[doi_pub]
-                        # n'écrase pas si la publication a déjà les champs
-                        if not pub.get('authors'):
-                            pub['authors'] = oa.get('authors', [])
-                        if not pub.get('institutions'):
-                            pub['institutions'] = oa.get('institutions', [])
-
-            # --- Aperçu et debug léger (affiche le 1er élément)
-            if pubs_to_export:
-                st.write("Aperçu des publications sélectionnées :")
-                df_preview = pd.DataFrame([{
-                    "Title": p.get("Title"),
-                    "doi": p.get("doi"),
-                    "Statut_HAL": p.get("Statut_HAL"),
-                    "Action": p.get("Action", "")
-                } for p in pubs_to_export])
-                st.dataframe(df_preview.head(20))
-                st.write("🔎 Exemple JSON 1er élément :")
-                st.json(pubs_to_export[0])
-            else:
-                st.info("ℹ️ Aucune publication n'est éligible pour l'export selon le filtre Statut_HAL.")
-
-            # --- Bouton unique : génère et prépare le download dans la session ---
-            # clé unique pour éviter DuplicateElementId
-            download_key = f"download_zip_{last_collection}"
-            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL pour {last_collection}", key=f"btn_download_zip_{last_collection}"):
-                if not pubs_to_export:
-                    st.warning("Aucune publication à exporter selon le filtre. Abandon.")
+            # Bouton : génération du ZIP (clé unique)
+            if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
+                st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
+            try:
+                # Importer la fonction (déjà dans ton environnement)
+                zipbuf = generate_zip_from_xmls(pubs_to_export)
+                if zipbuf:
+                # stocker bytes pour survivre au rerun
+                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                    st.success("✅ ZIP généré. Le bouton de téléchargement apparaît ci-dessous.")
                 else:
-                    with st.spinner(f"Génération du ZIP ({len(pubs_to_export)} fichiers)-- cela peut prendre quelques secondes..."):
-                        try:
-                            zipbuf = generate_zip_from_xmls(pubs_to_export)  # ta fonction dans hal_xml_export.py
-                            if zipbuf is None:
-                                st.error("La génération du ZIP a renvoyé None.")
-                            else:
-                                # stocke les octets dans la session (sert au download_button)
-                                st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                                st.success("✅ ZIP généré et prêt au téléchargement.")
-                        except Exception as e:
-                            import traceback
-                            st.error(f"Erreur lors de la génération du ZIP: {e}")
-                            st.text(traceback.format_exc())
+                    st.warning("Aucun fichier ZIP retourné (fonction renvoyant None ou liste vide).")
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
 
-            # --- Si le ZIP a déjà été généré et est en session, on affiche le download_button immédiatement ---
+            # Afficher le bouton de téléchargement si présent en session
             if st.session_state.get('zip_buffer'):
                 st.download_button(
-                    label=f"⬇️ Télécharger le ZIP ({last_collection})",
+                    label="⬇️ Télécharger le fichier ZIP des XML HAL",
                     data=st.session_state['zip_buffer'],
                     file_name=f"hal_exports_{last_collection}.zip",
                     mime="application/zip",
-                    key=download_key
+                    key=f"download_zip_{last_collection}"
                 )
         else:
-            # Pas de résultats en session => rien à afficher
+            # Pas de données en session : on n'affiche pas ce panneau
             pass
-    
-                                    
+
+                             
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
 
