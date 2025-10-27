@@ -12,7 +12,7 @@ from utils import (
 )
 
 # Importer la génération ZIP / XML (hal_xml_export.py)
-from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json
+from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json, _ensure_authors_struct, _ensure_institutions_struct
 
 # --- Définition de la liste des laboratoires (spécifique à cette application) ---
 labos_list_rennes = [
