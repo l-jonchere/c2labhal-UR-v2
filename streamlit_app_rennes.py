@@ -523,13 +523,8 @@ def main():
             )
 
         # -----------------------
-        # Panneau d'export ZIP (lit depuis session_state) — version robuste
+        # Panneau d'export ZIP (lit depuis session_state) — version stable
         # -----------------------
-
-        # Initialisation sûre des flags session
-        if 'generate_zip_triggered' not in st.session_state:
-            st.session_state['generate_zip_triggered'] = False
-
         if st.session_state.get('last_result_df') is not None:
             last_df = pd.DataFrame(st.session_state['last_result_df'])
             last_collection = st.session_state.get('last_collection', 'unknown')
@@ -538,82 +533,78 @@ def main():
             st.subheader(f"📦 Export XML HAL — collection : {last_collection}")
             st.write(f"Résultats en session : {len(last_df)} lignes")
 
-            # Filtrer publications hors HAL
+            # Filtrage : publications à exporter
             if 'Statut_HAL' in last_df.columns:
-                mask_non_hal = last_df['Statut_HAL'].fillna("").astype(str).isin(["Hors HAL", "Dans HAL mais hors de la collection"])
-                pubs_to_export = last_df[mask_non_hal].to_dict(orient='records')
+                mask_non_hal = last_df['Statut_HAL'].fillna("").astype(str).isin(
+                    ["Hors HAL", "Dans HAL mais hors de la collection"]
+                )
+                pubs_to_export = last_df[mask_non_hal].to_dict(orient="records")
             else:
-                pubs_to_export = last_df.to_dict(orient='records')
+                pubs_to_export = last_df.to_dict(orient="records")
 
-            st.info(f"Publications candidates : {len(pubs_to_export)}")
+            st.info(f"📚 Publications sélectionnées pour export : {len(pubs_to_export)}")
             if pubs_to_export:
-                st.write("Aperçu (3 premiers) :")
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-            # Debug : afficher les clés de st.session_state pour vérifier persistance
-            st.write("DEBUG session_state keys:", list(st.session_state.keys()))
+            # --- Bouton principal ---
+            if st.button("📦 Générer et Télécharger le ZIP des XML HAL", key=f"zip_{last_collection}"):
 
-            # Formulaire pour générer et télécharger le ZIP (évite reruns perdus)
-            form_key = f"zip_form_{last_collection}"
-            with st.form(form_key):
-                st.write(f"Nombre à exporter : {len(pubs_to_export)}")
-                submit = st.form_submit_button("📦 Générer & Télécharger le ZIP (expérimental)")
+                st.info("⏳ Préparation des données avant génération du ZIP...")
 
-            # Si formulaire soumis, on lance la génération (ce bloc survit au rerun)
-            if submit:
-                st.session_state['generate_zip_triggered'] = True
-
-            if st.session_state.get('generate_zip_triggered'):
-                st.write("🧩 Génération demandée — préparation des données...")
-
-                # Injector auteurs/institutions depuis OpenAlex si disponibles
+                # Étape 1 : injecter les auteurs / institutions depuis OpenAlex si disponibles
                 if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                    oa_map = { (p.get('doi') or "").strip().lower(): p for p in st.session_state['openalex_publications_raw'] if p.get('doi')}
+                            oa_map = {
+                        (p.get('doi') or "").strip().lower(): p
+                        for p in st.session_state['openalex_publications_raw']
+                        if p.get('doi')
+                    }
                     for pub in pubs_to_export:
                         doi = (pub.get('doi') or "").strip().lower()
                         if doi and doi in oa_map:
                             oa_entry = oa_map[doi]
-                            pub['authors'] = oa_entry.get('authors', [])
-                            pub['institutions'] = oa_entry.get('institutions', [])
-                    st.success("✅ Auteurs / institutions injectés depuis OpenAlex (si trouvés).")
+                            pub["authors"] = oa_entry.get("authors", [])
+                            pub["institutions"] = oa_entry.get("institutions", [])
+                    st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
                 else:
-                    st.info("ℹ️ Pas de données OpenAlex en session ou pas de pubs à exporter — les XML pourront être sans auteurs.")
+                    st.warning("⚠️ Aucune donnée OpenAlex en mémoire : les XML n’auront pas d’auteurs.")
 
-                # Sanitize (force structure correcte)
+                # Étape 2 : sanitation des structures
                 for i, pub in enumerate(pubs_to_export):
-                    pub['authors'] = _ensure_authors_struct(pub.get('authors'))
-                    pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
+                    pub["authors"] = _ensure_authors_struct(pub.get("authors"))
+                    pub["institutions"] = _ensure_institutions_struct(pub.get("institutions"))
                     if i < 3:
-                        st.write(f"DEBUG pub[{i}]: {pub.get('Title','')[:80]} → {len(pub['authors'])} auteurs, {len(pub['institutions'])} institutions")
-
-            # Génération du ZIP — attraper toutes les exceptions et afficher trace
-            try:
-                with st.spinner("Génération du ZIP en cours..."):
-                    zipbuf = generate_zip_from_xmls(pubs_to_export)
-                    if zipbuf:
-                        # normaliser en bytes
-                        st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                        st.success("✅ ZIP généré, prêt au téléchargement.")
-                        # Afficher bouton de download immédiatement
-                        st.download_button(
-                            label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                            data=st.session_state['zip_buffer'],
-                            file_name=f"hal_exports_{last_collection}.zip",
-                            mime="application/zip",
-                            key=f"download_zip_{last_collection}"
+                        st.write(
+                            f"DEBUG pub[{i}]: {pub.get('Title','')[:80]} → "
+                            f"{len(pub['authors'])} auteurs, {len(pub['institutions'])} institutions"
                         )
-                    else:
-                        st.error("La fonction generate_zip_from_xmls a renvoyé None ou un objet vide.")
-            except Exception as e:
-                st.error(f"Erreur pendant la génération du ZIP : {e}")
-                st.text(traceback.format_exc())
-            finally:
-                # réinitialiser le flag pour éviter de relancer automatiquement plusieurs fois
-                st.session_state['generate_zip_triggered'] = False
+
+                # Étape 3 : génération du ZIP
+                try:
+                    with st.spinner("Génération du ZIP en cours..."):
+                        zipbuf = generate_zip_from_xmls(pubs_to_export)
+
+                        if zipbuf:
+                            st.session_state["zip_buffer"] = (
+                                zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                            )
+                            st.success("✅ ZIP généré avec succès !")
+
+                            st.download_button(
+                                label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                                data=st.session_state["zip_buffer"],
+                                file_name=f"hal_exports_{last_collection}.zip",
+                                mime="application/zip",
+                                key=f"download_zip_{last_collection}",
+                            )
+                        else:
+                            st.error("Aucun fichier généré (zipbuf vide ou None).")
+                except Exception as e:
+                    import traceback
+                    st.error(f"Erreur pendant la génération du ZIP : {e}")
+                    st.text(traceback.format_exc())
 
         else:
-            st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche pour récupérer des données.")
-            pass
+            st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
 
                                    
         progress_bar_rennes.progress(100)
