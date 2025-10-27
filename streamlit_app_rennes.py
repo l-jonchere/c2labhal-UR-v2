@@ -544,20 +544,21 @@ def main():
             # Bouton : génération du ZIP (clé unique)
             if st.button("📦 Générer le ZIP des XML HAL (expérimental)", key=f"generate_zip_session_{last_collection}"):
                 st.info(f"➡️ Démarrage de la génération du ZIP pour {len(pubs_to_export)} pubs ...")
-                
-                # Si on a en mémoire les données OpenAlex enrichies, on injecte auteurs + affiliations
+
+                # 🧩 Étape 2 : si on a des données OpenAlex enrichies, on injecte les auteurs et affiliations
                 if 'openalex_publications_raw' in st.session_state:
-                    openalex_by_doi = {
-                        (p.get('doi') or '').strip().lower(): p
-                        for p in st.session_state['openalex_publications_raw']
-                        if p.get('doi')
-                    }
+                    openalex_data = st.session_state['openalex_publications_raw']
+                    # Indexation par DOI pour faciliter la fusion
+                    oa_map = {p.get('doi'): p for p in openalex_data if p.get('doi')}
                     for pub in pubs_to_export:
-                        doi_pub = (pub.get('doi') or '').strip().lower()
-                        if doi_pub in openalex_by_doi:
-                            oa_data = openalex_by_doi[doi_pub]
-                            pub['authors'] = oa_data.get('authors', [])
-                            pub['institutions'] = oa_data.get('institutions', [])
+                        doi = pub.get('doi')
+                        if doi and doi in oa_map:
+                            oa_entry = oa_map[doi]
+                            pub['authors'] = oa_entry.get('authors', [])
+                            pub['institutions'] = oa_entry.get('institutions', [])
+                    st.success("✅ Données OpenAlex (auteurs + affiliations) injectées dans les publications à exporter.")
+                else:
+                    st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en mémoire — les auteurs ne seront pas ajoutés.")
             
             try:
                 # Importer la fonction (déjà dans ton environnement)
