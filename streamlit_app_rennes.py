@@ -625,45 +625,6 @@ def main():
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
 
-# -----------------------
-# Fonctions utilitaires pour assainir les auteurs/institutions
-# -----------------------
-def _ensure_authors_struct(auth_field):
-    """Transforme en liste propre d'auteurs [{name, orcid, raw_affiliations}]"""
-    authors_out = []
-    if not auth_field:
-        return authors_out
-
-    if isinstance(auth_field, list):
-        for a in auth_field:
-            if isinstance(a, dict):
-                authors_out.append(a)
-            elif isinstance(a, str):
-                authors_out.append({"name": a, "orcid": "", "raw_affiliations": []})
-    elif isinstance(auth_field, str):
-        authors_out = [{"name": auth_field, "orcid": "", "raw_affiliations": []}]
-    else:
-        authors_out = [{"name": str(auth_field), "orcid": "", "raw_affiliations": []}]
-    return authors_out
-
-
-def _ensure_institutions_struct(inst_field):
-    """Transforme en liste propre d'institutions [{display_name, ror, type, country}]"""
-    inst_out = []
-    if not inst_field:
-        return inst_out
-
-    if isinstance(inst_field, list):
-        for i in inst_field:
-            if isinstance(i, dict):
-                inst_out.append(i)
-            elif isinstance(i, str):
-                inst_out.append({"display_name": i, "ror": "", "type": "institution", "country": ""})
-    elif isinstance(inst_field, str):
-        inst_out = [{"display_name": inst_field, "ror": "", "type": "institution", "country": ""}]
-    else:
-        inst_out = [{"display_name": str(inst_field), "ror": "", "type": "institution", "country": ""}]
-    return inst_out
 
 if __name__ == "__main__":
     main()
