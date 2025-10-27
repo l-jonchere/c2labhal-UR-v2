@@ -595,15 +595,15 @@ def main():
                 # 4️⃣ Réinitialiser le flag
                 st.session_state['generate_zip_triggered'] = False
 
-            # Afficher le bouton de téléchargement si présent en session
-            if st.session_state.get('zip_buffer'):
-                st.download_button(
-                    label="⬇️ Télécharger le fichier ZIP des XML HAL",
-                    data=st.session_state['zip_buffer'],
-                    file_name=f"hal_exports_{last_collection}.zip",
-                    mime="application/zip",
-                    key=f"download_zip_{last_collection}"
-                )
+                # Afficher le bouton de téléchargement si présent en session
+                if st.session_state.get('zip_buffer'):
+                    st.download_button(
+                        label="⬇️ Télécharger le fichier ZIP des XML HAL",
+                        data=st.session_state['zip_buffer'],
+                        file_name=f"hal_exports_{last_collection}.zip",
+                        mime="application/zip",
+                        key=f"download_zip_{last_collection}"
+                    )
         else:
             # Pas de données en session : on n'affiche pas ce panneau
             pass
