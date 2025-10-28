@@ -367,10 +367,13 @@ def generate_zip_from_xmls(publications_list):
                 continue
 
     zip_buffer.seek(0)
+    zip_bytes = zip_buffer.getvalue()
+
     st.info("✅ generate_zip_from_xmls terminée")
-    # show summary of what was actually written
     st.write("🗂 Fichiers écrits dans le ZIP :")
     for w in written_files:
         st.write(f" - {w['filename']} | DOI: {w['doi']} | Statut_HAL: {w['statut_hal']} | Action: {w.get('action','')}")
-    return zip_buffer
 
+    return zip_bytes
+
+    
