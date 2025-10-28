@@ -314,10 +314,7 @@ def main():
                     # Application de la fonction d’enrichissement
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
                     st.session_state['openalex_publications_raw'] = enriched_publications_rennes
-                    st.write(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
-
-                    st.write("🔍 Vérification enrich_with_openalex_authors()")
-                    st.json(enriched_publications_rennes[0])
+                    st.info(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
 
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
                     st.write("🧩 Données OpenAlex enrichies :", openalex_df_rennes.head(2))
@@ -501,7 +498,7 @@ def main():
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
-
+        
         # --- Fusionner les auteurs/institutions dans le DataFrame final ---        
         if 'doi' in result_df_rennes.columns:
             def normalize_doi(doi):
@@ -541,6 +538,7 @@ def main():
             st.warning("⚠️ Aucun DOI trouvé dans result_df_rennes : fusion impossible.")
 
         
+        
         # --- Sauvegarde persistante des résultats pour permettre les actions après rerun ---
         try:
             st.session_state['last_result_df'] = result_df_rennes.to_dict(orient='records')
@@ -552,12 +550,11 @@ def main():
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
-
+        
         st.write("🔍 Exemple après fusion (1ère ligne enrichie) :")
         if not result_df_rennes.empty:
             first_row = result_df_rennes.iloc[0].to_dict()
             st.json(first_row)
-
 
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
@@ -571,10 +568,10 @@ def main():
                 key=f"download_rennes_{collection_a_chercher_rennes}"
             )
 
-
         # -----------------------
         # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
         # -----------------------
+        
         # Défaut sûr si rien n'est défini (évite erreurs après rerun)
         pubs_to_export = []
         if st.session_state.get('last_result_df') is not None:
@@ -598,110 +595,32 @@ def main():
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-            # Diagnostics avant le clic
-            st.write("DEBUG — session_state keys:", list(st.session_state.keys()))
-            if st.session_state.get('last_result_df'):
-                st.write("DEBUG — taille last_result_df:", len(st.session_state['last_result_df']))
-                # affiche le premier en JSON (sûr même si pas d'authors)
-                try:
-                    st.write("DEBUG — first record keys:", list(st.session_state['last_result_df'][0].keys()))
-                    st.json(st.session_state['last_result_df'][0])
-                except Exception as e:
-                    st.write("DEBUG — impossible d'afficher first record:", e)
-            else:
-                st.write("DEBUG — pas de last_result_df en session")
-
-            # Gestion d’état persistante pour le clic du bouton
-            if "zip_triggered" not in st.session_state:
-                st.session_state["zip_triggered"] = False
-
-        # Afficher le bouton
+        # Unique visible button (génère le ZIP)
         if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
             st.session_state["zip_triggered"] = True
             st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
-
+            
         # --- Bloc réellement exécuté APRÈS le panneau principal (et donc après le rerun) ---
         if st.session_state.get("zip_triggered"):
             st.info("🚀 Exécution effective du bloc ZIP après rerun (hors panneau)")
             try:
-                # 1) Recréer de façon sûre pubs_to_export à partir de last_result_df (persistant)
-                last_df_records = st.session_state.get('last_result_df', []) or []
-                # rebuild dataframe and apply same filter as affichage
-                last_df_local = pd.DataFrame(last_df_records) if last_df_records else pd.DataFrame()
-                if not last_df_local.empty and 'Statut_HAL' in last_df_local.columns:
-                    mask_non_hal = last_df_local['Statut_HAL'].fillna("").astype(str).isin(
-                        ["Hors HAL", "Dans HAL mais hors de la collection"]
-                    )
-                    pubs_to_export_local = last_df_local[mask_non_hal].to_dict(orient='records')
-                else:
-                    pubs_to_export_local = last_df_local.to_dict(orient='records')
-
-                st.write(f"DEBUG (post-click) : {len(pubs_to_export_local)} publications sélectionnées pour export (reconstruites)")
-
-                # 2) Injecter auteurs/institutions depuis openalex_publications_raw si présent
-                if 'openalex_publications_raw' in st.session_state and pubs_to_export_local:
-                    def normalize_doi_for_map(d):
-                        if not d: return ""
-                        s = str(d).strip().lower()
-                        for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                            s = s.replace(prefix, "")
-                        return s
-
-                    oa_map = { normalize_doi_for_map(p.get('doi')): p for p in st.session_state['openalex_publications_raw'] if p.get('doi') }
-                    found = 0
-                    for pub in pubs_to_export_local:
-                        doi_n = normalize_doi_for_map(pub.get('doi'))
-                        if doi_n and doi_n in oa_map:
-                            oa_entry = oa_map[doi_n]
-                            pub['authors'] = oa_entry.get('authors', []) or []
-                            pub['institutions'] = oa_entry.get('institutions', []) or []
-                            found += 1
-                    st.write(f"DEBUG (post-click) : injection OpenAlex → {found} correspondances DOI trouvées")
-                else:
-                    st.info("ℹ️ Pas de données OpenAlex en session ou pas de pubs à exporter — les XML pourront être sans auteurs.")
-
-                # 3) Sanitize authors/institutions avant génération (utilise tes fonctions _ensure_*)
-                for i, pub in enumerate(pubs_to_export_local):
-                    pub['authors'] = _ensure_authors_struct(pub.get('authors', []))
-                    pub['institutions'] = _ensure_institutions_struct(pub.get('institutions', []))
-                    if i < 3:
-                        st.write(f"DEBUG pub[{i}] après sanitize -> authors: {len(pub['authors'])}, institutions: {len(pub['institutions'])}")
-
-                # 4) Génération du ZIP sur LA bonne liste pubs_to_export_local
                 with st.spinner("Génération du ZIP en cours..."):
-                    zipbuf = generate_zip_from_xmls(pubs_to_export_local)
-
-                # 5) Normaliser le retour en bytes et le stocker
-                if zipbuf:
+                    zipbuf = generate_zip_from_xmls(st.session_state.get("last_result_df", []))
+                    st.write("🔍 Type de retour generate_zip_from_xmls:", type(zipbuf))
                     if hasattr(zipbuf, "getvalue"):
-                        zip_bytes = zipbuf.getvalue()
+                        st.session_state["zip_buffer"] = zipbuf.getvalue()
+                        st.write("✅ getvalue() OK (BytesIO-like)")
                     elif isinstance(zipbuf, (bytes, bytearray)):
-                        zip_bytes = bytes(zipbuf)
+                        st.session_state["zip_buffer"] = zipbuf
+                        st.write("✅ déjà bytes")
                     else:
-                        # tentative de lecture si objet file-like
-                        try:
-                            zipbuf.seek(0)
-                            zip_bytes = zipbuf.read()
-                        except Exception:
-                            zip_bytes = None
-
-                    if zip_bytes:
-                        st.session_state['zip_buffer'] = zip_bytes
-                        st.success("✅ ZIP généré et stocké en session — prêt au téléchargement.")
-                        st.write("DEBUG : taille ZIP (octets) =", len(zip_bytes))
-                    else:
-                        st.error("❌ Échec de normalisation du retour ZIP en bytes.")
-                else:
-                    st.error("❌ La fonction generate_zip_from_xmls a renvoyé None ou un objet vide.")
-
+                        st.write("⚠️ non-bytes et non-BytesIO (probablement ZipFile ou dict)")
             except Exception as e:
                 import traceback
                 st.error(f"Erreur pendant la génération du ZIP : {e}")
                 st.text(traceback.format_exc())
             finally:
-                # réinitialiser le flag (mais après la génération pour éviter boucle)
                 st.session_state["zip_triggered"] = False
-
 
             # ⬇️ Ce bloc est à placer juste APRÈS le if st.button(...)
             #    (même indentation, donc un cran à gauche)
@@ -714,15 +633,14 @@ def main():
                     else "non-bytes"
                 )
 
-        # ⚠️ Ce else doit être au même niveau d’indentation que le bloc "if st.session_state..."
-        else:
-            st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
 
-        # ✅ Toujours à la toute fin du script (hors condition)
+    else:
+        st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
+
+    
+            
         progress_bar_rennes.progress(100)
-        progress_text_area_rennes.success(
-            f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !"
-        )
+        progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
 
 # -----------------------
 # Fonctions utilitaires pour assainir les auteurs/institutions
