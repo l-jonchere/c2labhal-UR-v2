@@ -574,76 +574,76 @@ def main():
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-        # Unique visible button (génère le ZIP)
-        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
-            # 1️⃣ Injection auteurs / affiliations depuis OpenAlex si disponibles
-            def normalize_doi(doi):
-                """Normalise les DOI pour correspondance robuste."""
-                if not doi:
-                    return ""
-                doi = str(doi).strip().lower()
-                for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                    doi = doi.replace(prefix, "")
-                return doi
+            # Unique visible button (génère le ZIP)
+            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+                # 1️⃣ Injection auteurs / affiliations depuis OpenAlex si disponibles
+                def normalize_doi(doi):
+                    """Normalise les DOI pour correspondance robuste."""
+                    if not doi:
+                        return ""
+                    doi = str(doi).strip().lower()
+                    for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                        doi = doi.replace(prefix, "")
+                    return doi
 
-            if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                openalex_data = st.session_state['openalex_publications_raw']
+                if 'openalex_publications_raw' in st.session_state and pubs_to_export:
+                    openalex_data = st.session_state['openalex_publications_raw']
 
-                # Dictionnaire DOI → données OpenAlex
-                oa_map = {normalize_doi(p.get('doi')): p for p in openalex_data if p.get('doi')}
+                    # Dictionnaire DOI → données OpenAlex
+                    oa_map = {normalize_doi(p.get('doi')): p for p in openalex_data if p.get('doi')}
 
-                found, missed = 0, 0
-                for pub in pubs_to_export:
-                    doi = normalize_doi(pub.get('doi'))
-                    if doi and doi in oa_map:
-                        oa_entry = oa_map[doi]
-                        pub['authors'] = oa_entry.get('authors', [])
-                        pub['institutions'] = oa_entry.get('institutions', [])
-                        found += 1
-                    else:
-                        missed += 1
+                    found, missed = 0, 0
+                    for pub in pubs_to_export:
+                        doi = normalize_doi(pub.get('doi'))
+                        if doi and doi in oa_map:
+                            oa_entry = oa_map[doi]
+                            pub['authors'] = oa_entry.get('authors', [])
+                            pub['institutions'] = oa_entry.get('institutions', [])
+                            found += 1
+                        else:
+                            missed += 1
 
-                st.success(f"✅ Auteurs et affiliations injectés pour {found} DOI sur {len(pubs_to_export)} (ratés : {missed}).")
+                    st.success(f"✅ Auteurs et affiliations injectés pour {found} DOI sur {len(pubs_to_export)} (ratés : {missed}).")
 
-                # 🔍 Vérification (affiche les 3 premiers)
+                    # 🔍 Vérification (affiche les 3 premiers)
+                    for i, pub in enumerate(pubs_to_export[:3]):
+                        st.write(f"DEBUG pub[{i}] → {pub.get('Title','')[:80]}")
+                        st.write(f"  → auteurs: {len(pub.get('authors', []))}, institutions: {len(pub.get('institutions', []))}")
+
+                else:
+                    st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en session.")
+
+
+                # debug
                 for i, pub in enumerate(pubs_to_export[:3]):
-                    st.write(f"DEBUG pub[{i}] → {pub.get('Title','')[:80]}")
-                    st.write(f"  → auteurs: {len(pub.get('authors', []))}, institutions: {len(pub.get('institutions', []))}")
+                    st.write(f"DEBUG pub[{i}] → authors={type(pub.get('authors'))}, institutions={type(pub.get('institutions'))}")
+
+                # 3) generate ZIP
+                try:
+                    with st.spinner("Génération du ZIP en cours..."):
+                        zipbuf = generate_zip_from_xmls(pubs_to_export)
+                        if zipbuf:
+                            st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                            st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
+                        else:
+                            st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
+                except Exception as e:
+                    import traceback
+                    st.error(f"Erreur pendant la génération du ZIP : {e}")
+                    st.text(traceback.format_exc())
+
+                # Afficher le bouton de téléchargement si on a le buffer
+                if st.session_state.get('zip_buffer'):
+                    st.download_button(
+                        label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
+                        data=st.session_state['zip_buffer'],
+                        file_name=f"hal_exports_{last_collection}.zip",
+                        mime="application/zip",
+                        key=f"download_zip_{last_collection}"
+                    )
 
             else:
-                st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en session.")
-
-
-        # debug
-        for i, pub in enumerate(pubs_to_export[:3]):
-            st.write(f"DEBUG pub[{i}] → authors={type(pub.get('authors'))}, institutions={type(pub.get('institutions'))}")
-
-        # 3) generate ZIP
-        try:
-            with st.spinner("Génération du ZIP en cours..."):
-                zipbuf = generate_zip_from_xmls(pubs_to_export)
-                if zipbuf:
-                    st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                    st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
-                else:
-                    st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
-        except Exception as e:
-            import traceback
-            st.error(f"Erreur pendant la génération du ZIP : {e}")
-            st.text(traceback.format_exc())
-
-        # Afficher le bouton de téléchargement si on a le buffer
-        if st.session_state.get('zip_buffer'):
-            st.download_button(
-                label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
-                data=st.session_state['zip_buffer'],
-                file_name=f"hal_exports_{last_collection}.zip",
-                mime="application/zip",
-                key=f"download_zip_{last_collection}"
-            )
-
-    else:
-        st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
+                st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
 
     
             
