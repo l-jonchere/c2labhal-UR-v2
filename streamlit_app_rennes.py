@@ -612,17 +612,15 @@ def main():
                 try:
                     with st.spinner("Génération du ZIP en cours..."):
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
-                        # --- Debug immédiat ---
-                        st.write("DEBUG retour generate_zip_from_xmls() →", type(zipbuf))
-                        if isinstance(zipbuf, (bytes, bytearray)):
-                            st.write("✅ C’est bien un objet bytes, longueur :", len(zipbuf))
-                            st.session_state['zip_buffer'] = zipbuf
+                        # --- Diagnostic du retour ---
+                        st.write("🧩 DEBUG: type(zipbuf) =", type(zipbuf))
+                        if isinstance(zipbuf, bytes):
+                            st.write(f"✅ C'est bien un objet bytes ({len(zipbuf)} octets)")
                         elif hasattr(zipbuf, "getvalue"):
-                            val = zipbuf.getvalue()
-                            st.write("⚠️ C’est un objet buffer, getvalue() →", type(val), "len:", len(val))
-                            st.session_state['zip_buffer'] = val
+                            st.write("ℹ️ zipbuf a un getvalue() (type buffer?)")
                         else:
-                            st.error(f"❌ Type inattendu renvoyé : {type(zipbuf)}")
+                            st.write("❌ zipbuf est un objet inattendu :", str(zipbuf)[:300])
+                            
                 except Exception as e:
                     import traceback
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
