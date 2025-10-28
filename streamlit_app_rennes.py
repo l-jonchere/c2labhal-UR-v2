@@ -606,8 +606,8 @@ def main():
                         key=f"download_zip_{last_collection}"
                     )
 
-    else:
-        st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
+        else:
+            st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
 
             
         progress_bar_rennes.progress(100)
