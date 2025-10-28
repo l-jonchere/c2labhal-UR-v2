@@ -554,6 +554,8 @@ def main():
         # -----------------------
         # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
         # -----------------------
+        # Défaut sûr si rien n'est défini (évite erreurs après rerun)
+        pubs_to_export = []
         if st.session_state.get('last_result_df') is not None:
             last_df = pd.DataFrame(st.session_state['last_result_df'])
             last_collection = st.session_state.get('last_collection', 'unknown')
@@ -575,28 +577,49 @@ def main():
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
+            # Diagnostics avant le clic
+            st.write("DEBUG — session_state keys:", list(st.session_state.keys()))
+            if st.session_state.get('last_result_df'):
+                st.write("DEBUG — taille last_result_df:", len(st.session_state['last_result_df']))
+                # affiche le premier en JSON (sûr même si pas d'authors)
+                try:
+                    st.write("DEBUG — first record keys:", list(st.session_state['last_result_df'][0].keys()))
+                    st.json(st.session_state['last_result_df'][0])
+                except Exception as e:
+                    st.write("DEBUG — impossible d'afficher first record:", e)
+            else:
+                st.write("DEBUG — pas de last_result_df en session")
+
             # ✅ Bouton unique : génère directement le ZIP
             if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
-                # Debug avant génération
-                for i, pub in enumerate(pubs_to_export[:3]):
-                    st.write(f"DEBUG pub[{i}] — titre: {pub.get('Title','')[:80]}")
-                    st.write(f"  auteurs: {type(pub.get('authors'))}, institutions: {type(pub.get('institutions'))}")
+                # DEBUG: état au moment du clic (TRÈS important)
+                st.write("CLICK — DEBUG session_state keys:", list(st.session_state.keys()))
+                st.write("CLICK — pubs_to_export length:", len(pubs_to_export))
+                if pubs_to_export:
+                    try:
+                        st.write("CLICK — premier pub (brief):", {
+                            "Title": pubs_to_export[0].get("Title"),
+                            "doi": pubs_to_export[0].get("doi"),
+                            "authors_type": type(pubs_to_export[0].get("authors")),
+                            "institutions_type": type(pubs_to_export[0].get("institutions")),
+                        })
+                        st.json(pubs_to_export[0])
+                    except Exception as e:
+                        st.write("CLICK — impossible d'afficher premier pub:", e)
 
-                # Génération du ZIP
+                # Ensuite on génère (avec try/except)
                 try:
                     with st.spinner("Génération du ZIP en cours..."):
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
                         if zipbuf:
-                            st.session_state['zip_buffer'] = (
-                                zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                            )
-                            st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
+                            st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                            st.success("✅ ZIP prêt — clique sur le bouton de téléchargement ci-dessous.")
                         else:
-                            st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
+                            st.error("La fonction generate_zip_from_xmls a renvoyé None/objet vide.")
                 except Exception as e:
                     import traceback
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
+                    st.error("Erreur pendant generate_zip_from_xmls (catch): " + str(e))
                     st.text(traceback.format_exc())
 
                 # Bouton de téléchargement
