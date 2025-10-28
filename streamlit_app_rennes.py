@@ -632,11 +632,6 @@ def main():
                         key=f"download_zip_{last_collection}"
                     )
 
-                st.write("POST-CLICK — zip_buffer present:", 'zip_buffer' in st.session_state)
-                    if 'zip_buffer' in st.session_state:
-                        st.write("POST-CLICK — taille zip_buffer (bytes len):", len(st.session_state['zip_buffer']) if isinstance(st.session_state['zip_buffer'], (bytes, bytearray)) else "non-bytes")
-
-
         # ⚠️ Ce else doit être au même niveau d’indentation que le bloc "if st.session_state..."
         else:
             st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
