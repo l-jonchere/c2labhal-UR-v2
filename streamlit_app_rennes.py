@@ -612,15 +612,17 @@ def main():
                 try:
                     with st.spinner("Génération du ZIP en cours..."):
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
-                        if zipbuf:
-                            # ✅ Corrige ici : normalise systématiquement en bytes purs
-                            if isinstance(zipbuf, (bytes, bytearray)):
-                                st.session_state['zip_buffer'] = zipbuf
-                            else:
-                                st.warning(f"⚠️ generate_zip_from_xmls n’a pas renvoyé des bytes ({type(zipbuf)}).")
+                        # --- Debug immédiat ---
+                        st.write("DEBUG retour generate_zip_from_xmls() →", type(zipbuf))
+                        if isinstance(zipbuf, (bytes, bytearray)):
+                            st.write("✅ C’est bien un objet bytes, longueur :", len(zipbuf))
+                            st.session_state['zip_buffer'] = zipbuf
+                        elif hasattr(zipbuf, "getvalue"):
+                            val = zipbuf.getvalue()
+                            st.write("⚠️ C’est un objet buffer, getvalue() →", type(val), "len:", len(val))
+                            st.session_state['zip_buffer'] = val
                         else:
-                            st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
-
+                            st.error(f"❌ Type inattendu renvoyé : {type(zipbuf)}")
                 except Exception as e:
                     import traceback
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
