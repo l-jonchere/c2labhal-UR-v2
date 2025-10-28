@@ -314,7 +314,7 @@ def main():
                     # Application de la fonction d’enrichissement
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
                     st.session_state['openalex_publications_raw'] = enriched_publications_rennes
-                    st.info(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
+                    st.write(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
 
                     st.write("🔍 Vérification enrich_with_openalex_authors()")
                     st.json(enriched_publications_rennes[0])
