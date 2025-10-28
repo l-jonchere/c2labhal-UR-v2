@@ -553,6 +553,7 @@ def main():
         # -----------------------
         # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
         # -----------------------
+
         if st.session_state.get('last_result_df') is not None:
             last_df = pd.DataFrame(st.session_state['last_result_df'])
             last_collection = st.session_state.get('last_collection', 'unknown')
@@ -571,8 +572,10 @@ def main():
                 pubs_to_export = last_df.to_dict(orient='records')
 
             st.info(f"Publications candidates : {len(pubs_to_export)}")
+            if pubs_to_export:
+                st.write(pd.DataFrame(pubs_to_export[:3]))
 
-            # Bouton unique
+            # ✅ Bouton unique : génère directement le ZIP
             if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
                 # Debug avant génération
@@ -596,8 +599,6 @@ def main():
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
                     st.text(traceback.format_exc())
 
-                st.write("DEBUG session_state keys:", list(st.session_state.keys()))
-
                 # Bouton de téléchargement
                 if st.session_state.get('zip_buffer'):
                     st.download_button(
@@ -608,12 +609,16 @@ def main():
                         key=f"download_zip_{last_collection}"
                     )
 
+        # ⚠️ Ce else doit être au même niveau d’indentation que le bloc "if st.session_state..."
         else:
             st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
 
-            
+        # ✅ Toujours à la toute fin du script (hors condition)
         progress_bar_rennes.progress(100)
-        progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
+        progress_text_area_rennes.success(
+            f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !"
+        )
+
 
 # -----------------------
 # Fonctions utilitaires pour assainir les auteurs/institutions
