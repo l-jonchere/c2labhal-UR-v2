@@ -502,26 +502,41 @@ def main():
         
         st.dataframe(result_df_rennes)
 
-        # --- Fusionner les auteurs/institutions dans le DataFrame final ---
+        # --- Fusionner les auteurs/institutions dans le DataFrame final ---        
         if 'doi' in result_df_rennes.columns:
             def normalize_doi(doi):
                 if not doi:
                     return ""
-                return str(doi).lower().strip().replace("https://doi.org/", "").replace("http://doi.org/", "").replace("doi:", "")
+                return (
+                    str(doi)
+                    .lower()
+                    .strip()
+                    .replace("https://doi.org/", "")
+                    .replace("http://doi.org/", "")
+                    .replace("doi:", "")
+                )
 
-            oa_map = {normalize_doi(p.get('doi')): p for p in enriched_publications_rennes if p.get('doi')}
+            # 🧠 Récupère les publications OpenAlex déjà stockées
+            openalex_data = st.session_state.get('openalex_publications_raw', [])
+            oa_map = {normalize_doi(p.get('doi')): p for p in openalex_data if p.get('doi')}
 
             merged_records = []
+            enriched_count = 0
             for rec in result_df_rennes.to_dict(orient='records'):
                 doi = normalize_doi(rec.get('doi'))
                 if doi in oa_map:
                     oa_entry = oa_map[doi]
                     rec['authors'] = oa_entry.get('authors', [])
                     rec['institutions'] = oa_entry.get('institutions', [])
+                    enriched_count += 1
+                else:
+                    rec['authors'] = []
+                    rec['institutions'] = []
                 merged_records.append(rec)
 
+            # ✅ Met à jour le DataFrame fusionné
             result_df_rennes = pd.DataFrame(merged_records)
-            st.success(f"✅ Fusion effectuée : {sum('authors' in r for r in merged_records)} notices avec auteurs.")
+            st.success(f"✅ Fusion OpenAlex effectuée : {enriched_count} notices enrichies sur {len(result_df_rennes)}.")
         else:
             st.warning("⚠️ Aucun DOI trouvé dans result_df_rennes : fusion impossible.")
 
@@ -537,6 +552,11 @@ def main():
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
+
+        st.write("🔍 Exemple après fusion (1ère ligne enrichie) :")
+        if not result_df_rennes.empty:
+            st.json(result_df_rennes.iloc[0])
+
 
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
