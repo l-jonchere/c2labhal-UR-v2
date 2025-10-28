@@ -555,7 +555,8 @@ def main():
 
         st.write("🔍 Exemple après fusion (1ère ligne enrichie) :")
         if not result_df_rennes.empty:
-            st.json(result_df_rennes.iloc[0])
+            first_row = result_df_rennes.iloc[0].to_dict()
+            st.json(first_row)
 
 
         # --- Export CSV classique ---
@@ -633,13 +634,14 @@ def main():
                     with st.spinner("Génération du ZIP en cours..."):
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
                         # --- Diagnostic du retour ---
-                        st.write("🧩 DEBUG: type(zipbuf) =", type(zipbuf))
-                        if isinstance(zipbuf, bytes):
-                            st.write(f"✅ C'est bien un objet bytes ({len(zipbuf)} octets)")
-                        elif hasattr(zipbuf, "getvalue"):
-                            st.write("ℹ️ zipbuf a un getvalue() (type buffer?)")
+                        st.write("🔍 Type de retour generate_zip_from_xmls:", type(zipbuf))
+                        if hasattr(zipbuf, "getvalue"):
+                            st.write("→ getvalue() OK (BytesIO-like)")
+                        elif isinstance(zipbuf, (bytes, bytearray)):
+                            st.write("→ déjà bytes")
                         else:
-                            st.write("❌ zipbuf est un objet inattendu :", str(zipbuf)[:300])
+                            st.write("→ non-bytes et non-BytesIO (probablement ZipFile ou dict)")
+
                             
                 except Exception as e:
                     import traceback
