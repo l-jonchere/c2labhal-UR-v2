@@ -596,6 +596,8 @@ def main():
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
                     st.text(traceback.format_exc())
 
+                st.write("DEBUG session_state keys:", list(st.session_state.keys()))
+
                 # Bouton de téléchargement
                 if st.session_state.get('zip_buffer'):
                     st.download_button(
