@@ -575,40 +575,40 @@ def main():
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-            # ✅ Bouton unique : génère directement le ZIP
-            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+        # ✅ Bouton unique : génère directement le ZIP
+        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
-                # Debug avant génération
-                for i, pub in enumerate(pubs_to_export[:3]):
-                    st.write(f"DEBUG pub[{i}] — titre: {pub.get('Title','')[:80]}")
-                    st.write(f"  auteurs: {type(pub.get('authors'))}, institutions: {type(pub.get('institutions'))}")
+        # Debug avant génération
+        for i, pub in enumerate(pubs_to_export[:3]):
+            st.write(f"DEBUG pub[{i}] — titre: {pub.get('Title','')[:80]}")
+            st.write(f"  auteurs: {type(pub.get('authors'))}, institutions: {type(pub.get('institutions'))}")
 
-                # Génération du ZIP
-                try:
-                    with st.spinner("Génération du ZIP en cours..."):
-                        st.json(pubs_to_export[0])
-                        zipbuf = generate_zip_from_xmls(pubs_to_export)
-                        if zipbuf:
-                            st.session_state['zip_buffer'] = (
-                                zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
-                            )
-                            st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
-                        else:
-                            st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
-                except Exception as e:
-                    import traceback
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
-                    st.text(traceback.format_exc())
-
-                # Bouton de téléchargement
-                if st.session_state.get('zip_buffer'):
-                    st.download_button(
-                        label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
-                        data=st.session_state['zip_buffer'],
-                        file_name=f"hal_exports_{last_collection}.zip",
-                        mime="application/zip",
-                        key=f"download_zip_{last_collection}"
+        # Génération du ZIP
+        try:
+            with st.spinner("Génération du ZIP en cours..."):
+                st.json(pubs_to_export[0])
+                zipbuf = generate_zip_from_xmls(pubs_to_export)
+                if zipbuf:
+                    st.session_state['zip_buffer'] = (
+                        zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
                     )
+                    st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
+                else:
+                    st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
+        except Exception as e:
+            import traceback
+            st.error(f"Erreur pendant la génération du ZIP : {e}")
+            st.text(traceback.format_exc())
+
+        # Bouton de téléchargement
+        if st.session_state.get('zip_buffer'):
+            st.download_button(
+                label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
+                data=st.session_state['zip_buffer'],
+                file_name=f"hal_exports_{last_collection}.zip",
+                mime="application/zip",
+                key=f"download_zip_{last_collection}"
+            )
 
         # ⚠️ Ce else doit être au même niveau d’indentation que le bloc "if st.session_state..."
         else:
