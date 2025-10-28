@@ -613,21 +613,21 @@ def main():
                     with st.spinner("Génération du ZIP en cours..."):
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
                         if zipbuf:
-                        # ✅ Corrige ici : normalise systématiquement en bytes purs
-                        if hasattr(zipbuf, "getvalue"):
-                            st.session_state['zip_buffer'] = zipbuf.getvalue()
-                        elif isinstance(zipbuf, (bytes, bytearray)):
-                            st.session_state['zip_buffer'] = zipbuf
+                            # ✅ Corrige ici : normalise systématiquement en bytes purs
+                            if hasattr(zipbuf, "getvalue"):
+                                st.session_state['zip_buffer'] = zipbuf.getvalue()
+                            elif isinstance(zipbuf, (bytes, bytearray)):
+                                st.session_state['zip_buffer'] = zipbuf
+                            else:
+                                # Si c’est un objet ZipFile, on le convertit manuellement
+                                try:
+                                    zipbuf.seek(0)
+                                    st.session_state['zip_buffer'] = zipbuf.read()
+                                except Exception:
+                                    st.session_state['zip_buffer'] = b""
+                            st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
                         else:
-                            # Si c’est un objet ZipFile, on le convertit manuellement
-                            try:
-                                zipbuf.seek(0)
-                                st.session_state['zip_buffer'] = zipbuf.read()
-                            except Exception:
-                                st.session_state['zip_buffer'] = b""
-                        st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
-                    else:
-                        st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
+                            st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
 
                 except Exception as e:
                     import traceback
