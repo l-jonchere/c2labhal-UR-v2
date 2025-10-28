@@ -615,10 +615,10 @@ def main():
             if "zip_triggered" not in st.session_state:
                 st.session_state["zip_triggered"] = False
 
-            # Afficher le bouton
-            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
-                st.session_state["zip_triggered"] = True
-                st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
+        # Afficher le bouton
+        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+            st.session_state["zip_triggered"] = True
+            st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
 
         # --- Bloc réellement exécuté APRÈS le panneau principal (et donc après le rerun) ---
         if st.session_state.get("zip_triggered"):
