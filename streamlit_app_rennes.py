@@ -611,54 +611,34 @@ def main():
             else:
                 st.write("DEBUG — pas de last_result_df en session")
 
-            # ✅ Bouton unique : génère directement le ZIP
-            st.write("🧩 Bouton présent sur la page :", True)
-            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}_{len(pubs_to_export)}"):
-                # DEBUG: état au moment du clic (TRÈS important)
-                st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
-                st.write("CLICK — DEBUG session_state keys:", list(st.session_state.keys()))
-                st.write("CLICK — pubs_to_export length:", len(pubs_to_export))
-                if pubs_to_export:
-                    try:
-                        st.write("CLICK — premier pub (brief):", {
-                            "Title": pubs_to_export[0].get("Title"),
-                            "doi": pubs_to_export[0].get("doi"),
-                            "authors_type": type(pubs_to_export[0].get("authors")),
-                            "institutions_type": type(pubs_to_export[0].get("institutions")),
-                        })
-                        st.json(pubs_to_export[0])
-                    except Exception as e:
-                        st.write("CLICK — impossible d'afficher premier pub:", e)
+            # Gestion d’état persistante pour le clic du bouton
+            if "zip_triggered" not in st.session_state:
+                st.session_state["zip_triggered"] = False
 
-                # Ensuite on génère (avec try/except)
+            # Afficher le bouton
+            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+                st.session_state["zip_triggered"] = True
+                st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
+
+            # Bloc réellement exécuté après le clic (persiste au rerun)
+            if st.session_state["zip_triggered"]:
+                st.info("🚀 Exécution effective du bloc ZIP après rerun")
                 try:
                     with st.spinner("Génération du ZIP en cours..."):
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
-                        # --- Diagnostic du retour ---
                         st.write("🔍 Type de retour generate_zip_from_xmls:", type(zipbuf))
                         if hasattr(zipbuf, "getvalue"):
-                            st.write("→ getvalue() OK (BytesIO-like)")
+                            st.write("? getvalue() OK (BytesIO-like)")
                         elif isinstance(zipbuf, (bytes, bytearray)):
-                            st.write("→ déjà bytes")
+                            st.write("? déjà bytes")
                         else:
-                            st.write("→ non-bytes et non-BytesIO (probablement ZipFile ou dict)")
-
-                            
+                            st.write("? non-bytes et non-BytesIO (probablement ZipFile ou dict)")
                 except Exception as e:
-                    import traceback
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
-                    st.text(traceback.format_exc())
+                finally:
+                    # on réinitialise le flag pour éviter relance multiple
+                    st.session_state["zip_triggered"] = False
 
-
-                # Bouton de téléchargement
-                if st.session_state.get('zip_buffer'):
-                    st.download_button(
-                        label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
-                        data=st.session_state['zip_buffer'],
-                        file_name=f"hal_exports_{last_collection}.zip",
-                        mime="application/zip",
-                        key=f"download_zip_{last_collection}"
-                    )
 
             # ⬇️ Ce bloc est à placer juste APRÈS le if st.button(...)
             #    (même indentation, donc un cran à gauche)
