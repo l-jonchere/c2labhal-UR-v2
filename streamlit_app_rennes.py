@@ -620,25 +620,27 @@ def main():
                 st.session_state["zip_triggered"] = True
                 st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
 
-            # Bloc réellement exécuté après le clic (persiste au rerun)
-            if st.session_state["zip_triggered"]:
-                st.info("🚀 Exécution effective du bloc ZIP après rerun")
-                try:
-                    with st.spinner("Génération du ZIP en cours..."):
-                        zipbuf = generate_zip_from_xmls(pubs_to_export)
-                        st.write("🔍 Type de retour generate_zip_from_xmls:", type(zipbuf))
-                        if hasattr(zipbuf, "getvalue"):
-                            st.write("? getvalue() OK (BytesIO-like)")
-                        elif isinstance(zipbuf, (bytes, bytearray)):
-                            st.write("? déjà bytes")
-                        else:
-                            st.write("? non-bytes et non-BytesIO (probablement ZipFile ou dict)")
-                except Exception as e:
-                    st.error(f"Erreur pendant la génération du ZIP : {e}")
-                finally:
-                    # on réinitialise le flag pour éviter relance multiple
-                    st.session_state["zip_triggered"] = False
-
+        # --- Bloc réellement exécuté APRÈS le panneau principal (et donc après le rerun) ---
+        if st.session_state.get("zip_triggered"):
+            st.info("🚀 Exécution effective du bloc ZIP après rerun (hors panneau)")
+            try:
+                with st.spinner("Génération du ZIP en cours..."):
+                    zipbuf = generate_zip_from_xmls(st.session_state.get("last_result_df", []))
+                    st.write("🔍 Type de retour generate_zip_from_xmls:", type(zipbuf))
+                    if hasattr(zipbuf, "getvalue"):
+                        st.session_state["zip_buffer"] = zipbuf.getvalue()
+                        st.write("✅ getvalue() OK (BytesIO-like)")
+                    elif isinstance(zipbuf, (bytes, bytearray)):
+                        st.session_state["zip_buffer"] = zipbuf
+                        st.write("✅ déjà bytes")
+                    else:
+                        st.write("⚠️ non-bytes et non-BytesIO (probablement ZipFile ou dict)")
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
+            finally:
+                st.session_state["zip_triggered"] = False
 
             # ⬇️ Ce bloc est à placer juste APRÈS le if st.button(...)
             #    (même indentation, donc un cran à gauche)
