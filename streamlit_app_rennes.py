@@ -571,59 +571,23 @@ def main():
                 pubs_to_export = last_df.to_dict(orient='records')
 
             st.info(f"Publications candidates : {len(pubs_to_export)}")
-            if pubs_to_export:
-                st.write(pd.DataFrame(pubs_to_export[:3]))
 
-            # Unique visible button (génère le ZIP)
+            # Bouton unique
             if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
-                # 1️⃣ Injection auteurs / affiliations depuis OpenAlex si disponibles
-                def normalize_doi(doi):
-                    """Normalise les DOI pour correspondance robuste."""
-                    if not doi:
-                        return ""
-                    doi = str(doi).strip().lower()
-                    for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                        doi = doi.replace(prefix, "")
-                    return doi
 
-                if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                    openalex_data = st.session_state['openalex_publications_raw']
-
-                    # Dictionnaire DOI → données OpenAlex
-                    oa_map = {normalize_doi(p.get('doi')): p for p in openalex_data if p.get('doi')}
-
-                    found, missed = 0, 0
-                    for pub in pubs_to_export:
-                        doi = normalize_doi(pub.get('doi'))
-                        if doi and doi in oa_map:
-                            oa_entry = oa_map[doi]
-                            pub['authors'] = oa_entry.get('authors', [])
-                            pub['institutions'] = oa_entry.get('institutions', [])
-                            found += 1
-                        else:
-                            missed += 1
-
-                    st.success(f"✅ Auteurs et affiliations injectés pour {found} DOI sur {len(pubs_to_export)} (ratés : {missed}).")
-
-                    # 🔍 Vérification (affiche les 3 premiers)
-                    for i, pub in enumerate(pubs_to_export[:3]):
-                        st.write(f"DEBUG pub[{i}] → {pub.get('Title','')[:80]}")
-                        st.write(f"  → auteurs: {len(pub.get('authors', []))}, institutions: {len(pub.get('institutions', []))}")
-
-                else:
-                    st.warning("⚠️ Aucune donnée OpenAlex enrichie trouvée en session.")
-
-
-                # debug
+                # Debug avant génération
                 for i, pub in enumerate(pubs_to_export[:3]):
-                    st.write(f"DEBUG pub[{i}] → authors={type(pub.get('authors'))}, institutions={type(pub.get('institutions'))}")
+                    st.write(f"DEBUG pub[{i}] — titre: {pub.get('Title','')[:80]}")
+                    st.write(f"  auteurs: {type(pub.get('authors'))}, institutions: {type(pub.get('institutions'))}")
 
-                # 3) generate ZIP
+                # Génération du ZIP
                 try:
                     with st.spinner("Génération du ZIP en cours..."):
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
                         if zipbuf:
-                            st.session_state['zip_buffer'] = zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                            st.session_state['zip_buffer'] = (
+                                zipbuf.getvalue() if hasattr(zipbuf, "getvalue") else zipbuf
+                            )
                             st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
                         else:
                             st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
@@ -632,7 +596,7 @@ def main():
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
                     st.text(traceback.format_exc())
 
-                # Afficher le bouton de téléchargement si on a le buffer
+                # Bouton de téléchargement
                 if st.session_state.get('zip_buffer'):
                     st.download_button(
                         label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
@@ -642,10 +606,9 @@ def main():
                         key=f"download_zip_{last_collection}"
                     )
 
-            else:
-                st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
+else:
+    st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
 
-    
             
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
