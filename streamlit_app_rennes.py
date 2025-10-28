@@ -600,15 +600,15 @@ def main():
                     st.error(f"Erreur pendant la génération du ZIP : {e}")
                     st.text(traceback.format_exc())
 
-            # Bouton de téléchargement
-            if st.session_state.get('zip_buffer'):
-                st.download_button(
-                    label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
-                    data=st.session_state['zip_buffer'],
-                    file_name=f"hal_exports_{last_collection}.zip",
-                    mime="application/zip",
-                    key=f"download_zip_{last_collection}"
-                )
+                # Bouton de téléchargement
+                if st.session_state.get('zip_buffer'):
+                    st.download_button(
+                        label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
+                        data=st.session_state['zip_buffer'],
+                        file_name=f"hal_exports_{last_collection}.zip",
+                        mime="application/zip",
+                        key=f"download_zip_{last_collection}"
+                    )
 
         # ⚠️ Ce else doit être au même niveau d’indentation que le bloc "if st.session_state..."
         else:
