@@ -578,10 +578,10 @@ def main():
             # ✅ Bouton unique : génère directement le ZIP
             if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
-        # Debug avant génération
-        for i, pub in enumerate(pubs_to_export[:3]):
-            st.write(f"DEBUG pub[{i}] — titre: {pub.get('Title','')[:80]}")
-            st.write(f"  auteurs: {type(pub.get('authors'))}, institutions: {type(pub.get('institutions'))}")
+            # Debug avant génération
+            for i, pub in enumerate(pubs_to_export[:3]):
+                st.write(f"DEBUG pub[{i}] — titre: {pub.get('Title','')[:80]}")
+                st.write(f"  auteurs: {type(pub.get('authors'))}, institutions: {type(pub.get('institutions'))}")
 
         # Génération du ZIP
         try:
