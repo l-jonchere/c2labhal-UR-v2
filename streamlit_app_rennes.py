@@ -612,6 +612,7 @@ def main():
                 st.write("DEBUG — pas de last_result_df en session")
 
             # ✅ Bouton unique : génère directement le ZIP
+            st.write("🧩 Bouton présent sur la page :", True)
             if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}_{len(pubs_to_export)}"):
                 # DEBUG: état au moment du clic (TRÈS important)
                 st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
