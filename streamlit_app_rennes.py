@@ -575,8 +575,8 @@ def main():
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-        # ✅ Bouton unique : génère directement le ZIP
-        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+            # ✅ Bouton unique : génère directement le ZIP
+            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
         # Debug avant génération
         for i, pub in enumerate(pubs_to_export[:3]):
