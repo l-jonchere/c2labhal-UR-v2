@@ -586,6 +586,7 @@ def main():
                 # Génération du ZIP
                 try:
                     with st.spinner("Génération du ZIP en cours..."):
+                        st.json(pubs_to_export[0])
                         zipbuf = generate_zip_from_xmls(pubs_to_export)
                         if zipbuf:
                             st.session_state['zip_buffer'] = (
