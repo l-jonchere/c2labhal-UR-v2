@@ -36,8 +36,8 @@ labos_list_rennes = [
         "pubmed_query": "(U835[affiliation]) OR (UMR_S1230[affiliation]) OR (UMR1230[affiliation]) OR (U1230[affiliation]) OR (\"ARN régulateurs bactériens et médecine\"[affiliation]) OR (\"Bacterial regulatory RNAs and Medicine\"[affiliation]) OR ((Tattevin[Author]) OR (Cattoir[Author]) OR (Revest[Author]) OR (Le Pabic[Author]) OR (Donnio[Author]) OR (Le Pabic[Author]) AND Rennes[affiliation])"
     },
     {
-        "collection": "CIC", "scopus_id": "60105521", "openalex_id": "I4210116274", "openalex_raw":"\"CIC Rennes\" OR \"Unité dʼInvestigation Clinique de Rennes\" OR \"Centre dʼInvestigation Clinique de Rennes\" OR \"Rennes Clinical investigation\" OR CIC1414 OR CIC203 OR CIC0203 OR \"CIC 1414\" OR \"CIC 203\" OR \"CIC 0203\" OR \"CIC-INSERM 1414\"",
-        "pubmed_query": "((\"INSERM 1414\"[Affiliation]) OR (INSERM-CIC-1414[Affiliation]) OR (CIC-1414[Affiliation]) OR (0203[Affiliation]) OR (1414[Affiliation]) OR (\"INSERM 0203\"[Affiliation]) OR (\"Unité dʼInvestigation Clinique Rennes\"[Affiliation]) OR (\"Centre dʼInvestigation Clinique* Rennes\"[Affiliation]) OR (\"Clinical Investigation Center Rennes\"[Affiliation]) OR (\"Rennes Clinical Investigation Center\"[Affiliation]) NOT (\"U 804\"[Affiliation]) NOT (U804[Affiliation]) NOT (CIC-IT[Affiliation]) AND (rennes[Affiliation])) NOT (Inria[Affiliation]) NOT (FORTH/ICE-HT[Affiliation])"
+        "collection": "CIC", "scopus_id": "60105521", "openalex_id": "I4210116274", "openalex_raw":"\"CIC Rennes\" OR \"Unité d'Investigation Clinique de Rennes\" OR \"Centre d'Investigation Clinique de Rennes\" OR \"Rennes Clinical investigation\" OR CIC1414 OR CIC203 OR CIC0203 OR \"CIC 1414\" OR \"CIC 203\" OR \"CIC 0203\" OR \"CIC-INSERM 1414\"",
+        "pubmed_query": "((\"INSERM 1414\"[Affiliation]) OR (INSERM-CIC-1414[Affiliation]) OR (CIC-1414[Affiliation]) OR (0203[Affiliation]) OR (1414[Affiliation]) OR (\"INSERM 0203\"[Affiliation]) OR (\"Unité d'Investigation Clinique Rennes\"[Affiliation]) OR (\"Centre d'Investigation Clinique* Rennes\"[Affiliation]) OR (\"Clinical Investigation Center Rennes\"[Affiliation]) OR (\"Rennes Clinical Investigation Center\"[Affiliation]) NOT (\"U 804\"[Affiliation]) NOT (U804[Affiliation]) NOT (CIC-IT[Affiliation]) AND (rennes[Affiliation])) NOT (Inria[Affiliation]) NOT (FORTH/ICE-HT[Affiliation])"
     },
     {
         "collection": "OSS", "scopus_id": "60138518", "openalex_id": "I4210090689", "openalex_raw":"ERL440 OR \"ERL 440\" OR COSS OR \"Oncogenesis Stress and Signaling\" OR U1242 OR \"U 1242\" OR UMR1242 OR \"UMR 1242\"",
@@ -157,16 +157,16 @@ def add_sidebar_menu():
     st.sidebar.markdown("---")
 
     st.sidebar.header("Autres applications c2LabHAL")
-    st.sidebar.markdown("📖 [c2LabHAL - Application Principale](https://c2labhal.streamlit.app/)")
-    st.sidebar.markdown("📄 [c2LabHAL version CSV](https://c2labhal-csv.streamlit.app/)")
+    st.sidebar.markdown("?? [c2LabHAL - Application Principale](https://c2labhal.streamlit.app/)")
+    st.sidebar.markdown("?? [c2LabHAL version CSV](https://c2labhal-csv.streamlit.app/)")
 
 
     st.sidebar.markdown("---")
     
     st.sidebar.markdown("Présentation du projet :")
-    st.sidebar.markdown("[📊 Voir les diapositives](https://slides.com/guillaumegodet/deck-d5bc03#/2)")
+    st.sidebar.markdown("[?? Voir les diapositives](https://slides.com/guillaumegodet/deck-d5bc03#/2)")
     st.sidebar.markdown("Code source :")
-    st.sidebar.markdown("[🐙 Voir sur GitHub](https://github.com/GuillaumeGodet/c2labhal)")
+    st.sidebar.markdown("[?? Voir sur GitHub](https://github.com/GuillaumeGodet/c2labhal)")
 
 
 def main():
@@ -181,7 +181,7 @@ def main():
 
     add_sidebar_menu() 
 
-    st.title("🥎 c2LabHAL - Version Université de Rennes")
+    st.title("?? c2LabHAL - Version Université de Rennes")
     st.subheader("Comparez les publications d’un laboratoire de l'Université de Rennes avec sa collection HAL")
 
     labo_choisi_nom_rennes = st.selectbox(
@@ -205,15 +205,15 @@ def main():
     with col2_dates_rennes:
         end_year_rennes = st.number_input("Année de fin", min_value=1900, max_value=2100, value=pd.Timestamp.now().year, key="rennes_end_year")
 
-    with st.expander("🔧 Options avancées pour les auteurs"):
-        fetch_authors_rennes = st.checkbox("🧑‍🔬 Récupérer les auteurs via Crossref (peut ralentir)", value=False, key="rennes_fetch_authors_cb")
+    with st.expander("?? Options avancées pour les auteurs"):
+        fetch_authors_rennes = st.checkbox("????? Récupérer les auteurs via Crossref (peut ralentir)", value=False, key="rennes_fetch_authors_cb")
         compare_authors_rennes = False
         uploaded_authors_file_rennes = None
         if fetch_authors_rennes:
-            compare_authors_rennes = st.checkbox("🔍 Comparer les auteurs avec une liste de chercheurs", value=False, key="rennes_compare_authors_cb")
+            compare_authors_rennes = st.checkbox("?? Comparer les auteurs avec une liste de chercheurs", value=False, key="rennes_compare_authors_cb")
             if compare_authors_rennes:
                 uploaded_authors_file_rennes = st.file_uploader(
-                    "📤 Téléversez un fichier CSV de chercheurs (colonnes: 'collection', 'prénom nom')", 
+                    "?? Téléversez un fichier CSV de chercheurs (colonnes: 'collection', 'prénom nom')", 
                     type=["csv"], 
                     key="rennes_upload_authors_fu",
                     help="Le fichier CSV doit avoir une colonne 'collection' (code de la collection HAL) et une colonne avec les noms des chercheurs."
@@ -222,7 +222,7 @@ def main():
     progress_bar_rennes = st.progress(0)
     progress_text_area_rennes = st.empty() # Correction: Suffixe _rennes ajouté
 
-    if st.button(f"🚀 Lancer la recherche pour {collection_a_chercher_rennes}"):
+    if st.button(f"?? Lancer la recherche pour {collection_a_chercher_rennes}"):
         if pubmed_api_key_secret_rennes and pubmed_query_labo_rennes:
             os.environ['NCBI_API_KEY'] = pubmed_api_key_secret_rennes
 
@@ -279,7 +279,7 @@ def main():
                     if 'doi' in openalex_df_rennes.columns:
                         openalex_df_rennes['doi'] = openalex_df_rennes['doi'].apply(clean_doi)
 
-                    # 🧩 ---- Bloc d’enrichissement à insérer ici ----
+                    # ?? ---- Bloc d’enrichissement à insérer ici ----
                     def enrich_with_openalex_authors(openalex_results):
                         publications = []
                         for pub in openalex_results:
@@ -289,7 +289,7 @@ def main():
                                 st.warning(f"Erreur dans extract_authors_from_openalex_json pour {pub.get('id', 'inconnu')}: {e}")
                                 authors_data = []
 
-                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
+                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' ? {len(authors_data)} auteurs extraits")
 
                             institutions = []
                             for a in authors_data:
@@ -314,13 +314,16 @@ def main():
                     # Application de la fonction d’enrichissement
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
                     st.session_state['openalex_publications_raw'] = enriched_publications_rennes
-                    st.info(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
+                    st.write(f"? Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
+
+                    st.write("?? Vérification enrich_with_openalex_authors()")
+                    st.json(enriched_publications_rennes[0])
 
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
-                    st.write("🧩 Données OpenAlex enrichies :", openalex_df_rennes.head(2))
-                    # 🧩 ---- Fin du bloc d’enrichissement ----
+                    st.write("?? Données OpenAlex enrichies :", openalex_df_rennes.head(2))
+                    # ?? ---- Fin du bloc d’enrichissement ----
 
-                    # ✅ Et c’est ici que tu gardes ta ligne d’origine :
+                    # ? Et c’est ici que tu gardes ta ligne d’origine :
                     st.success(f"{len(openalex_df_rennes)} publications OpenAlex trouvées pour {collection_a_chercher_rennes}.")
 
         progress_bar_rennes.progress(15)
@@ -498,7 +501,7 @@ def main():
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
-        
+
         # --- Fusionner les auteurs/institutions dans le DataFrame final ---        
         if 'doi' in result_df_rennes.columns:
             def normalize_doi(doi):
@@ -513,7 +516,7 @@ def main():
                     .replace("doi:", "")
                 )
 
-            # 🧠 Récupère les publications OpenAlex déjà stockées
+            # ?? Récupère les publications OpenAlex déjà stockées
             openalex_data = st.session_state.get('openalex_publications_raw', [])
             oa_map = {normalize_doi(p.get('doi')): p for p in openalex_data if p.get('doi')}
 
@@ -531,47 +534,47 @@ def main():
                     rec['institutions'] = []
                 merged_records.append(rec)
 
-            # ✅ Met à jour le DataFrame fusionné
+            # ? Met à jour le DataFrame fusionné
             result_df_rennes = pd.DataFrame(merged_records)
-            st.success(f"✅ Fusion OpenAlex effectuée : {enriched_count} notices enrichies sur {len(result_df_rennes)}.")
+            st.success(f"? Fusion OpenAlex effectuée : {enriched_count} notices enrichies sur {len(result_df_rennes)}.")
         else:
-            st.warning("⚠️ Aucun DOI trouvé dans result_df_rennes : fusion impossible.")
+            st.warning("?? Aucun DOI trouvé dans result_df_rennes : fusion impossible.")
 
-        
         
         # --- Sauvegarde persistante des résultats pour permettre les actions après rerun ---
         try:
             st.session_state['last_result_df'] = result_df_rennes.to_dict(orient='records')
             st.session_state['last_collection'] = collection_a_chercher_rennes
-            st.success("✅ Résultats sauvegardés en session — vous pouvez générer le ZIP sans relancer la recherche.")
+            st.success("? Résultats sauvegardés en session — vous pouvez générer le ZIP sans relancer la recherche.")
         except Exception as e:
             st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
-        
-        st.write("🔍 Exemple après fusion (1ère ligne enrichie) :")
+
+        st.write("?? Exemple après fusion (1ère ligne enrichie) :")
         if not result_df_rennes.empty:
             first_row = result_df_rennes.iloc[0].to_dict()
             st.json(first_row)
+
 
         # --- Export CSV classique ---
         if not result_df_rennes.empty:
             csv_export_rennes_data = result_df_rennes.to_csv(index=False, encoding='utf-8-sig')
             output_filename_rennes_final = f"c2LabHAL_resultats_{collection_a_chercher_rennes.replace(' ', '_')}_{start_year_rennes}-{end_year_rennes}.csv"
             st.download_button(
-                label=f"📥 Télécharger les résultats pour {collection_a_chercher_rennes}",
+                label=f"?? Télécharger les résultats pour {collection_a_chercher_rennes}",
                 data=csv_export_rennes_data,
                 file_name=output_filename_rennes_final,
                 mime="text/csv",
                 key=f"download_rennes_{collection_a_chercher_rennes}"
             )
 
+
         # -----------------------
         # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
         # -----------------------
-        
         # Défaut sûr si rien n'est défini (évite erreurs après rerun)
         pubs_to_export = []
         if st.session_state.get('last_result_df') is not None:
@@ -579,7 +582,7 @@ def main():
             last_collection = st.session_state.get('last_collection', 'unknown')
 
             st.markdown("---")
-            st.subheader(f"📦 Export XML HAL — collection : {last_collection}")
+            st.subheader(f"?? Export XML HAL — collection : {last_collection}")
             st.write(f"Résultats en session : {len(last_df)} lignes")
 
             # Filtrer publications hors HAL
@@ -595,29 +598,112 @@ def main():
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-        # Unique visible button (génère le ZIP)
-        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
-            st.session_state["zip_triggered"] = True
-            st.warning("⚡ CLIC DÉTECTÉ — génération ZIP en cours...")
-            # 1) injecter auteurs/institutions depuis OpenAlex si disponibles
-            if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                oa_map = { (p.get('doi') or "").strip().lower(): p for p in st.session_state['openalex_publications_raw'] if p.get('doi') }
-                for pub in pubs_to_export:
-                    doi = (pub.get('doi') or "").strip().lower()
-                    if doi and doi in oa_map:
-                        oa_entry = oa_map[doi]
-                        pub['authors'] = oa_entry.get('authors', [])
-                        pub['institutions'] = oa_entry.get('institutions', [])
-                st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
+            # Diagnostics avant le clic
+            st.write("DEBUG — session_state keys:", list(st.session_state.keys()))
+            if st.session_state.get('last_result_df'):
+                st.write("DEBUG — taille last_result_df:", len(st.session_state['last_result_df']))
+                # affiche le premier en JSON (sûr même si pas d'authors)
+                try:
+                    st.write("DEBUG — first record keys:", list(st.session_state['last_result_df'][0].keys()))
+                    st.json(st.session_state['last_result_df'][0])
+                except Exception as e:
+                    st.write("DEBUG — impossible d'afficher first record:", e)
             else:
-                st.info("ℹ️ Pas de données OpenAlex en session — les XML pourront être sans auteurs.")
+                st.write("DEBUG — pas de last_result_df en session")
 
-            # 2) sanitize structures
-            for pub in pubs_to_export:
-                pub['authors'] = _ensure_authors_struct(pub.get('authors'))
-                pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
-                
-            # ⬇️ Ce bloc est à placer juste APRÈS le if st.button(...)
+            # Gestion d’état persistante pour le clic du bouton
+            if "zip_triggered" not in st.session_state:
+                st.session_state["zip_triggered"] = False
+
+        # Afficher le bouton
+        if st.button(f"?? Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+            st.session_state["zip_triggered"] = True
+            st.warning("? CLIC DÉTECTÉ — génération ZIP en cours...")
+
+        # --- Bloc réellement exécuté APRÈS le panneau principal (et donc après le rerun) ---
+        if st.session_state.get("zip_triggered"):
+            st.info("?? Exécution effective du bloc ZIP après rerun (hors panneau)")
+            try:
+                # 1) Recréer de façon sûre pubs_to_export à partir de last_result_df (persistant)
+                last_df_records = st.session_state.get('last_result_df', []) or []
+                # rebuild dataframe and apply same filter as affichage
+                last_df_local = pd.DataFrame(last_df_records) if last_df_records else pd.DataFrame()
+                if not last_df_local.empty and 'Statut_HAL' in last_df_local.columns:
+                    mask_non_hal = last_df_local['Statut_HAL'].fillna("").astype(str).isin(
+                        ["Hors HAL", "Dans HAL mais hors de la collection"]
+                    )
+                    pubs_to_export_local = last_df_local[mask_non_hal].to_dict(orient='records')
+                else:
+                    pubs_to_export_local = last_df_local.to_dict(orient='records')
+
+                st.write(f"DEBUG (post-click) : {len(pubs_to_export_local)} publications sélectionnées pour export (reconstruites)")
+
+                # 2) Injecter auteurs/institutions depuis openalex_publications_raw si présent
+                if 'openalex_publications_raw' in st.session_state and pubs_to_export_local:
+                    def normalize_doi_for_map(d):
+                        if not d: return ""
+                        s = str(d).strip().lower()
+                        for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                            s = s.replace(prefix, "")
+                        return s
+
+                    oa_map = { normalize_doi_for_map(p.get('doi')): p for p in st.session_state['openalex_publications_raw'] if p.get('doi') }
+                    found = 0
+                    for pub in pubs_to_export_local:
+                        doi_n = normalize_doi_for_map(pub.get('doi'))
+                        if doi_n and doi_n in oa_map:
+                            oa_entry = oa_map[doi_n]
+                            pub['authors'] = oa_entry.get('authors', []) or []
+                            pub['institutions'] = oa_entry.get('institutions', []) or []
+                            found += 1
+                    st.write(f"DEBUG (post-click) : injection OpenAlex ? {found} correspondances DOI trouvées")
+                else:
+                    st.info("?? Pas de données OpenAlex en session ou pas de pubs à exporter — les XML pourront être sans auteurs.")
+
+                # 3) Sanitize authors/institutions avant génération (utilise tes fonctions _ensure_*)
+                for i, pub in enumerate(pubs_to_export_local):
+                    pub['authors'] = _ensure_authors_struct(pub.get('authors', []))
+                    pub['institutions'] = _ensure_institutions_struct(pub.get('institutions', []))
+                    if i < 3:
+                        st.write(f"DEBUG pub[{i}] après sanitize -> authors: {len(pub['authors'])}, institutions: {len(pub['institutions'])}")
+
+                # 4) Génération du ZIP sur LA bonne liste pubs_to_export_local
+                with st.spinner("Génération du ZIP en cours..."):
+                    zipbuf = generate_zip_from_xmls(pubs_to_export_local)
+
+                # 5) Normaliser le retour en bytes et le stocker
+                if zipbuf:
+                    if hasattr(zipbuf, "getvalue"):
+                        zip_bytes = zipbuf.getvalue()
+                    elif isinstance(zipbuf, (bytes, bytearray)):
+                        zip_bytes = bytes(zipbuf)
+                    else:
+                        # tentative de lecture si objet file-like
+                        try:
+                            zipbuf.seek(0)
+                            zip_bytes = zipbuf.read()
+                        except Exception:
+                            zip_bytes = None
+
+                    if zip_bytes:
+                        st.session_state['zip_buffer'] = zip_bytes
+                        st.success("? ZIP généré et stocké en session — prêt au téléchargement.")
+                        st.write("DEBUG : taille ZIP (octets) =", len(zip_bytes))
+                    else:
+                        st.error("? Échec de normalisation du retour ZIP en bytes.")
+                else:
+                    st.error("? La fonction generate_zip_from_xmls a renvoyé None ou un objet vide.")
+
+            except Exception as e:
+                import traceback
+                st.error(f"Erreur pendant la génération du ZIP : {e}")
+                st.text(traceback.format_exc())
+            finally:
+                # réinitialiser le flag (mais après la génération pour éviter boucle)
+                st.session_state["zip_triggered"] = False
+
+
+            # ?? Ce bloc est à placer juste APRÈS le if st.button(...)
             #    (même indentation, donc un cran à gauche)
             st.write("POST-CLICK — zip_buffer present:", 'zip_buffer' in st.session_state)
             if 'zip_buffer' in st.session_state:
@@ -628,50 +714,15 @@ def main():
                     else "non-bytes"
                 )
 
-        # debug
-        for i, pub in enumerate(pubs_to_export[:3]):
-            st.write(f"DEBUG pub[{i}] → authors={type(pub.get('authors'))}, institutions={type(pub.get('institutions'))}")
-            
-        # --- Bloc réellement exécuté APRÈS le panneau principal (et donc après le rerun) ---
-        if st.session_state.get("zip_triggered"):
-            st.info("🚀 Exécution effective du bloc ZIP après rerun (hors panneau)")
-            try:
-                with st.spinner("Génération du ZIP en cours..."):
-                    zipbuf = generate_zip_from_xmls(st.session_state.get("last_result_df", []))
-                    st.write("🔍 Type de retour generate_zip_from_xmls:", type(zipbuf))
-                    if hasattr(zipbuf, "getvalue"):
-                        st.session_state["zip_buffer"] = zipbuf.getvalue()
-                        st.write("✅ getvalue() OK (BytesIO-like)")
-                    elif isinstance(zipbuf, (bytes, bytearray)):
-                        st.session_state["zip_buffer"] = zipbuf
-                        st.write("✅ déjà bytes")
-                    else:
-                        st.write("⚠️ non-bytes et non-BytesIO (probablement ZipFile ou dict)")
-            except Exception as e:
-                import traceback
-                st.error(f"Erreur pendant la génération du ZIP : {e}")
-                st.text(traceback.format_exc())
-            finally:
-                st.session_state["zip_triggered"] = False
+        # ?? Ce else doit être au même niveau d’indentation que le bloc "if st.session_state..."
+        else:
+            st.info("?? Aucune recherche en session. Lancez d'abord la recherche.")
 
-
-        # Afficher le bouton de téléchargement si on a le buffer
-        if st.session_state.get('zip_buffer'):
-            st.download_button(
-                label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
-                data=st.session_state['zip_buffer'],
-                file_name=f"hal_exports_{last_collection}.zip",
-                mime="application/zip",
-                key=f"download_zip_{last_collection}"
-            )
-
-    else:
-        st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
-
-    
-            
+        # ? Toujours à la toute fin du script (hors condition)
         progress_bar_rennes.progress(100)
-        progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
+        progress_text_area_rennes.success(
+            f"?? Traitement pour {collection_a_chercher_rennes} terminé avec succès !"
+        )
 
 # -----------------------
 # Fonctions utilitaires pour assainir les auteurs/institutions
