@@ -511,6 +511,16 @@ def main():
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
+
+        # --- Fusion OpenAlex SAFE (placer ici, avant st.session_state save) ---
+        openalex_enriched = st.session_state.get("openalex_publications_raw", [])
+        if openalex_enriched:
+            result_df_rennes, diag = merge_openalex_into_df(result_df_rennes, openalex_enriched)
+            st.write("🔎 Diagnostics merge OpenAlex → DataFrame :")
+            st.json(diag)
+        else:
+            st.info("ℹ️ Pas de données OpenAlex en session — pas de fusion effectuée.")
+        
         # --- Sauvegarde persistante des résultats pour permettre les actions après rerun ---
         try:
             st.session_state['last_result_df'] = result_df_rennes.to_dict(orient='records')
@@ -611,15 +621,6 @@ def main():
                 parts = [p.strip() for p in s.split('|')]
                 return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
             return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
-
-        # --- Fusion OpenAlex SAFE (placer ici, avant st.session_state save) ---
-        openalex_enriched = st.session_state.get("openalex_publications_raw", [])
-        if openalex_enriched:
-            result_df_rennes, diag = merge_openalex_into_df(result_df_rennes, openalex_enriched)
-            st.write("🔎 Diagnostics merge OpenAlex → DataFrame :")
-            st.json(diag)
-        else:
-            st.info("ℹ️ Pas de données OpenAlex en session — pas de fusion effectuée.")
 
 
         # -----------------------
