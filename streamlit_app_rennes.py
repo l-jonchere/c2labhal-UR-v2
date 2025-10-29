@@ -533,18 +533,51 @@ def main():
             st.subheader(f"📦 Export XML HAL — collection : {last_collection}")
             st.write(f"Résultats en session : {len(last_df)} lignes")
 
-            # Filtrer publications hors HAL
+            # 🧠 Étape 1 : injection OpenAlex pour *toutes* les notices, avant le filtrage
+            if 'openalex_publications_raw' in st.session_state:
+                oa_data = st.session_state['openalex_publications_raw']
+
+                def normalize_doi(d):
+                    if not d:
+                        return ""
+                    s = str(d).strip().lower()
+                    for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                        s = s.replace(prefix, "")
+                    return s
+
+                oa_map = {normalize_doi(p.get("doi")): p for p in oa_data if p.get("doi")}
+                found = 0
+                for i, row in last_df.iterrows():
+                    doi = normalize_doi(row.get("doi"))
+                    if doi and doi in oa_map:
+                        oa_entry = oa_map[doi]
+                        last_df.at[i, "authors"] = oa_entry.get("authors", [])
+                        last_df.at[i, "institutions"] = oa_entry.get("institutions", [])
+                        found += 1
+                    else:
+                        last_df.at[i, "authors"] = []
+                        last_df.at[i, "institutions"] = []
+                st.success(f"✅ Auteurs / affiliations injectés dans {found} notices sur {len(last_df)}")
+            else:
+                st.info("ℹ️ Pas de données OpenAlex enrichies en session — les XML seront sans auteurs.")
+
+            # 🧹 Étape 2 : filtrage des publications hors HAL
             if 'Statut_HAL' in last_df.columns:
                 mask_non_hal = last_df['Statut_HAL'].fillna("").astype(str).isin(
                     ["Hors HAL", "Dans HAL mais hors de la collection"]
                 )
                 pubs_to_export = last_df[mask_non_hal].to_dict(orient="records")
             else:
-                pubs_to_export = last_df.to_dict(orient='records')
+                pubs_to_export = last_df.to_dict(orient="records")
 
             st.info(f"Publications candidates : {len(pubs_to_export)}")
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
+
+            # 🧩 Étape 3 : normalisation stricte
+            for pub in pubs_to_export:
+                pub["authors"] = _ensure_authors_struct(pub.get("authors", []))
+                pub["institutions"] = _ensure_institutions_struct(pub.get("institutions", []))
 
         # Unique visible button (génère le ZIP)
         if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
