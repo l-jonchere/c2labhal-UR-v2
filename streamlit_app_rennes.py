@@ -600,176 +600,136 @@ def main():
             return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
 
         # -----------------------
-        # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
+        # Panneau robuste : un seul bouton "Télécharger le ZIP" (reconstruit tout à partir de last_result_df)
         # -----------------------
         if st.session_state.get('last_result_df') is not None:
-            last_df = pd.DataFrame(st.session_state['last_result_df'])
+            # Reconstruire le DataFrame de la session (source de vérité)
+            last_df_records = st.session_state.get('last_result_df', []) or []
+            last_df = pd.DataFrame(last_df_records) if last_df_records else pd.DataFrame()
             last_collection = st.session_state.get('last_collection', 'unknown')
 
             st.markdown("---")
             st.subheader(f"📦 Export XML HAL — collection : {last_collection}")
             st.write(f"Résultats en session : {len(last_df)} lignes")
 
-            # 🧠 Étape 1 : injection OpenAlex pour *toutes* les notices, avant le filtrage
-            if 'openalex_publications_raw' in st.session_state:
-                oa_data = st.session_state['openalex_publications_raw']
+            # Filtrer publications hors HAL (conditions défensives : .fillna + lower/strip comparaison)
+            def is_statut_hors( statut_value ):
+                if not statut_value and statut_value != 0:
+                    return False
+                s = str(statut_value).strip().lower()
+                return s in ["hors hal", "dans hal mais hors de la collection"]
 
-                def normalize_doi(d):
-                    if not d:
-                        return ""
-                    s = str(d).strip().lower()
-                    for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                        s = s.replace(prefix, "")
-                    return s
-
-                oa_map = {normalize_doi(p.get("doi")): p for p in oa_data if p.get("doi")}
-                found = 0
-                for i, row in last_df.iterrows():
-                    doi = normalize_doi(row.get("doi"))
-                    if doi and doi in oa_map:
-                        oa_entry = oa_map[doi]
-                        last_df.at[i, "authors"] = oa_entry.get("authors", [])
-                        last_df.at[i, "institutions"] = oa_entry.get("institutions", [])
-                        found += 1
-                    else:
-                        last_df.at[i, "authors"] = []
-                        last_df.at[i, "institutions"] = []
-                st.success(f"✅ Auteurs / affiliations injectés dans {found} notices sur {len(last_df)}")
+            if not last_df.empty and 'Statut_HAL' in last_df.columns:
+                mask_non_hal = last_df['Statut_HAL'].fillna("").astype(str).apply(lambda x: x.strip())
+                pubs_to_export = last_df[mask_non_hal.apply(lambda v: v.lower() in ["hors hal", "dans hal mais hors de la collection"])].to_dict(orient='records')
             else:
-                st.info("ℹ️ Pas de données OpenAlex enrichies en session — les XML seront sans auteurs.")
-
-            # 🧹 Étape 2 : filtrage des publications hors HAL
-            if 'Statut_HAL' in last_df.columns:
-                mask_non_hal = last_df['Statut_HAL'].fillna("").astype(str).isin(
-                    ["Hors HAL", "Dans HAL mais hors de la collection"]
-                )
-                pubs_to_export = last_df[mask_non_hal].to_dict(orient="records")
-            else:
-                pubs_to_export = last_df.to_dict(orient="records")
+                pubs_to_export = last_df.to_dict(orient='records')
 
             st.info(f"Publications candidates : {len(pubs_to_export)}")
             if pubs_to_export:
                 st.write(pd.DataFrame(pubs_to_export[:3]))
 
-            # 🧩 Étape 3 : normalisation stricte
-            for pub in pubs_to_export:
-                pub["authors"] = _ensure_authors_struct(pub.get("authors", []))
-                pub["institutions"] = _ensure_institutions_struct(pub.get("institutions", []))
+            # Bouton unique : déclenche export
+            if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
-        # Unique visible button (génère le ZIP)
-        if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
+                # --- DEBUG : vérifier sample avant injection ---
+                if pubs_to_export:
+                    st.write("DEBUG (avant injection) — premier enregistrement (brut) :")
+                    st.json({k: pubs_to_export[0].get(k) for k in ["Title","doi","Statut_HAL","Action"] if k in pubs_to_export[0]})
 
-            # 1) Injecter auteurs/institutions depuis OpenAlex si disponibles
-            if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                oa_map = {
-                    (p.get('doi') or "").strip().lower(): p
-                    for p in st.session_state['openalex_publications_raw']
-                    if p.get('doi')
-                }
+                # Normalisation DOI utilisée pour la correspondance (identique des deux côtés)
+                def normalize_doi_for_map(d):
+                    if not d:
+                        return ""
+                    s = str(d).strip().lower()
+                    for prefix in ("https://doi.org/", "http://doi.org/", "doi:", "doi.org/"):
+                        s = s.replace(prefix, "")
+                    return s
+
+                # Récupérer openalex_publications_raw depuis la session (si présent)
+                openalex_pub_list = st.session_state.get('openalex_publications_raw', []) or []
+
+                # Construire map DOI -> openalex entry (normalisée)
+                oa_map = {}
+                for oa in openalex_pub_list:
+                    doi_oa = normalize_doi_for_map(oa.get('doi'))
+                    if doi_oa:
+                        # si plusieurs entrées pour même DOI, on garde la première (ou tu peux décider de fusionner)
+                        if doi_oa not in oa_map:
+                            oa_map[doi_oa] = oa
+
+                # Injecter auteurs/institutions pour chaque publication filtrée
+                found = 0
                 for pub in pubs_to_export:
-                    doi = (pub.get('doi') or "").strip().lower()
-                    if doi and doi in oa_map:
-                        oa_entry = oa_map[doi]
-                        pub['authors'] = oa_entry.get('authors', [])
-                        pub['institutions'] = oa_entry.get('institutions', [])
-                st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
-            else:
-                st.info("ℹ️ Pas de données OpenAlex en session — les XML pourront être sans auteurs.")
+                    doi_pub = normalize_doi_for_map(pub.get('doi'))
+                    if doi_pub and doi_pub in oa_map:
+                        oa_entry = oa_map[doi_pub]
+                        pub['authors'] = oa_entry.get('authors', []) or []
+                        pub['institutions'] = oa_entry.get('institutions', []) or []
+                        found += 1
+                    else:
+                        # Ne rien laisser comme None : garantir structure vide
+                        pub['authors'] = pub.get('authors') or []
+                        pub['institutions'] = pub.get('institutions') or []
 
-            # 2) Sanitize structures
-            for pub in pubs_to_export:
-                pub['authors'] = _ensure_authors_struct(pub.get('authors'))
-                pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
+                st.success(f"✅ Injection terminée : {found} correspondances DOI trouvées sur {len(pubs_to_export)}.")
 
-        # Debug avant export
-            for i, pub in enumerate(pubs_to_export[:3]):
-                st.write(f"DEBUG pub[{i}] → authors={type(pub.get('authors'))}, institutions={type(pub.get('institutions'))}")
+                # Sanitize strict : forcer format attendu par generate_hal_xml
+                for pub in pubs_to_export:
+                    pub['authors'] = _ensure_authors_struct(pub.get('authors'))
+                    pub['institutions'] = _ensure_institutions_struct(pub.get('institutions'))
 
-        # 🧹 Normalisation stricte des auteurs et institutions
-        def normalize_authors(auth):
-            """Garantit une liste de dicts {'name': str}"""
-            if not auth:
-                return []
-            if isinstance(auth, str):
-                return [{"name": auth}]
-            if isinstance(auth, dict):
-                return [auth]
-            if isinstance(auth, list):
-                normed = []
-                for a in auth:
-                    if isinstance(a, str):
-                        normed.append({"name": a})
-                    elif isinstance(a, dict):
-                        normed.append(a)
-                return normed
-            return []
+                # DEBUG : montrer un exemple après sanitize
+                if pubs_to_export:
+                    st.write("DEBUG (après sanitize) — premier enregistrement :")
+                    st.json({
+                        "Title": pubs_to_export[0].get("Title"),
+                        "doi": pubs_to_export[0].get("doi"),
+                        "authors_len": len(pubs_to_export[0].get("authors") or []),
+                        "institutions_len": len(pubs_to_export[0].get("institutions") or [])
+                    })
 
-        def normalize_institutions(inst):
-            """Garantit une liste de dicts {'name': str}"""
-            if not inst:
-                return []
-            if isinstance(inst, str):
-                return [{"name": inst}]
-            if isinstance(inst, dict):
-                return [inst]
-            if isinstance(inst, list):
-                normed = []
-                for i in inst:
-                    if isinstance(i, str):
-                        normed.append({"name": i})
-                    elif isinstance(i, dict):
-                        normed.append(i)
-                return normed
-            return []
-
-        # Appliquer la normalisation à toutes les publications
-        for pub in pubs_to_export:
-            pub["authors"] = normalize_authors(pub.get("authors", []))
-            pub["institutions"] = normalize_institutions(pub.get("institutions", []))
-
-
-        # 3) Génération du ZIP
-        try:
-            with st.spinner("Génération du ZIP en cours..."):
+                # Génération du ZIP (sur la liste filtrée et enrichie)
+                try:
+                    with st.spinner("Génération du ZIP en cours..."):
                 zipbuf = generate_zip_from_xmls(pubs_to_export)
 
-                # ✅ Normalisation en bytes (nouveau bloc)
-                zip_bytes = None
-                if zipbuf:
-                    if hasattr(zipbuf, "getvalue"):
-                        zip_bytes = zipbuf.getvalue()
-                    elif isinstance(zipbuf, (bytes, bytearray)):
-                        zip_bytes = bytes(zipbuf)
+                    # Normaliser et stocker bytes dans session
+                    zip_bytes = None
+                    if zipbuf:
+                        if hasattr(zipbuf, "getvalue"):
+                            zip_bytes = zipbuf.getvalue()
+                        elif isinstance(zipbuf, (bytes, bytearray)):
+                            zip_bytes = bytes(zipbuf)
+                        else:
+                            try:
+                                zipbuf.seek(0)
+                                zip_bytes = zipbuf.read()
+                            except Exception:
+                                zip_bytes = None
+
+                    if zip_bytes:
+                        st.session_state['zip_buffer'] = zip_bytes
+                        st.success("✅ ZIP généré et stocké en session — prêt au téléchargement.")
+                        st.write("DEBUG : taille ZIP (octets) =", len(zip_bytes))
+                        # bouton de téléchargement immédiat
+                        st.download_button(
+                            label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
+                            data=st.session_state['zip_buffer'],
+                            file_name=f"hal_exports_{last_collection}.zip",
+                            mime="application/zip",
+                            key=f"download_zip_{last_collection}"
+                        )
                     else:
-                        try:
-                            zipbuf.seek(0)
-                            zip_bytes = zipbuf.read()
-                        except Exception:
-                            zip_bytes = None
-
-                if zip_bytes:
-                    st.session_state['zip_buffer'] = zip_bytes
-                    st.success("✅ ZIP prêt — cliquez sur le bouton ci-dessous pour télécharger.")
-                    st.write(f"DEBUG : taille ZIP (octets) = {len(zip_bytes)}")
-                else:
-                    st.error("Erreur : la génération du ZIP a renvoyé None ou un objet vide.")
-        except Exception as e:
-            import traceback
-            st.error(f"Erreur pendant la génération du ZIP : {e}")
-            st.text(traceback.format_exc())
-
-        # 4) Bouton de téléchargement
-        if st.session_state.get('zip_buffer'):
-            st.download_button(
-                label="⬇️ Télécharger le fichier ZIP des XML HAL (cliquer ici)",
-                data=st.session_state['zip_buffer'],
-                file_name=f"hal_exports_{last_collection}.zip",
-                mime="application/zip",
-                key=f"download_zip_{last_collection}"
-            )
+                        st.error("La génération du ZIP a échoué ou n'a pas retourné des bytes valides.")
+                except Exception as e:
+                    import traceback
+                    st.error(f"Erreur pendant la génération du ZIP : {e}")
+                    st.text(traceback.format_exc())
 
         else:
             st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
+
 
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
