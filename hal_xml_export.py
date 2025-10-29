@@ -12,6 +12,15 @@ import ast
 # Utilitaires internes
 # ==============================
 
+def normalize_doi(doi):
+    if not doi:
+        return ""
+    s = str(doi).strip().lower()
+    for prefix in ("https://doi.org/", "http://doi.org/", "doi:", "doi.org/"):
+        s = s.replace(prefix, "")
+    return s
+
+
 def _safe_text(value):
     """Retourne une chaîne sûre, encodable en UTF-8 et utilisable dans un XML (jamais None ni NaN)."""
     if value is None:
