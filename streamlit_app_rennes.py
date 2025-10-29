@@ -142,6 +142,14 @@ labos_list_rennes = [
 ]
 labos_df_rennes_global = pd.DataFrame(labos_list_rennes)
 
+def normalize_doi(doi):
+    if not doi:
+        return ""
+    s = str(doi).strip().lower()
+    for prefix in ("https://doi.org/", "http://doi.org/", "doi:", "doi.org/"):
+        s = s.replace(prefix, "")
+    return s
+
 
 # Fonction pour ajouter le menu de navigation (spécifique à cette app)
 def add_sidebar_menu():
