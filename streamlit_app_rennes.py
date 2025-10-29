@@ -323,15 +323,11 @@ def main():
                         return publications
 
 
-                    # --- Fusion OpenAlex SAFE (placer ici, avant st.session_state save) ---
-                    openalex_enriched = st.session_state.get("openalex_publications_raw", [])
-                    if openalex_enriched:
-                        result_df_rennes, diag = merge_openalex_into_df(result_df_rennes, openalex_enriched)
-                        st.write("🔎 Diagnostics merge OpenAlex → DataFrame :")
-                        st.json(diag)
-                    else:
-                        st.info("ℹ️ Pas de données OpenAlex en session — pas de fusion effectuée.")
-
+                    # Application de la fonction d’enrichissement
+                    enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
+                    st.session_state['openalex_publications_raw'] = enriched_publications_rennes
+                    st.write(f"DEBUG OpenAlex raw count: {len(openalex_data_rennes)} -> enriched: {len(enriched_publications_rennes)}")
+                    st.json(enriched_publications_rennes[:1])  # inspecter 1er élément
 
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
                     st.write("🧩 Données OpenAlex enrichies :", openalex_df_rennes.head(2))
@@ -615,6 +611,16 @@ def main():
                 parts = [p.strip() for p in s.split('|')]
                 return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
             return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
+
+        # --- Fusion OpenAlex SAFE (placer ici, avant st.session_state save) ---
+        openalex_enriched = st.session_state.get("openalex_publications_raw", [])
+        if openalex_enriched:
+            result_df_rennes, diag = merge_openalex_into_df(result_df_rennes, openalex_enriched)
+            st.write("🔎 Diagnostics merge OpenAlex → DataFrame :")
+            st.json(diag)
+        else:
+            st.info("ℹ️ Pas de données OpenAlex en session — pas de fusion effectuée.")
+
 
         # -----------------------
         # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
