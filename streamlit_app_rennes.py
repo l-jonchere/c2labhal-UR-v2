@@ -641,7 +641,7 @@ def main():
             # 🧹 Étape 2 : filtrage des publications hors HAL
             if 'Statut_HAL' in last_df.columns:
                 mask_non_hal = last_df['Statut_HAL'].fillna("").astype(str).isin(
-                    ["Hors HAL", "Dans HAL mais hors de la collection"]
+                    ["Dans la collection"]
                 )
                 pubs_to_export = last_df[mask_non_hal].to_dict(orient="records")
             else:
