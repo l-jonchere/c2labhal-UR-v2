@@ -692,7 +692,7 @@ def main():
                 # Génération du ZIP (sur la liste filtrée et enrichie)
                 try:
                     with st.spinner("Génération du ZIP en cours..."):
-                zipbuf = generate_zip_from_xmls(pubs_to_export)
+                        zipbuf = generate_zip_from_xmls(pubs_to_export)
 
                     # Normaliser et stocker bytes dans session
                     zip_bytes = None
