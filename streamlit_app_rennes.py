@@ -322,6 +322,47 @@ def main():
                             })
                         return publications
 
+                    # -------------------------------
+                    # 🧹 Filtrage des données OpenAlex
+                    # -------------------------------
+                    
+                    # On ne garde que les DOI présents dans les publications HAL "hors collection"
+                    if 'Statut_HAL' in result_df_rennes.columns:
+                        valid_dois = (
+                            result_df_rennes[result_df_rennes['Statut_HAL'].isin(
+                                ["Hors HAL", "Dans HAL mais hors de la collection"]
+                            )]['doi']
+                            .dropna()
+                            .astype(str)
+                            .str.lower()
+                            .str.strip()
+                            .tolist()
+                        )
+                    else:
+                        valid_dois = []
+                    
+                    st.write(f"🎯 {len(valid_dois)} DOI ciblés pour injection OpenAlex.")
+                    
+                    def normalize_doi(d):
+                        if not d:
+                            return ""
+                        s = str(d).strip().lower()
+                        for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                            s = s.replace(prefix, "")
+                        return s
+                    
+                    # Filtrer la liste OpenAlex enrichie
+                    filtered_openalex = [
+                        p for p in enriched_publications_rennes
+                        if normalize_doi(p.get("doi")) in [normalize_doi(d) for d in valid_dois]
+                    ]
+                    
+                    st.write(f"✅ Filtrage OpenAlex effectué : {len(filtered_openalex)} publications conservées sur {len(enriched_publications_rennes)}.")
+                    
+                    # Et c’est cette version qu’on garde en session
+                    st.session_state['openalex_publications_raw'] = filtered_openalex
+
+
 
                     # Application de la fonction d’enrichissement
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
