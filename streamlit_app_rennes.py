@@ -575,6 +575,49 @@ def main():
             for i, pub in enumerate(pubs_to_export[:3]):
                 st.write(f"DEBUG pub[{i}] → authors={type(pub.get('authors'))}, institutions={type(pub.get('institutions'))}")
 
+        # 🧹 Normalisation stricte des auteurs et institutions
+        def normalize_authors(auth):
+            """Garantit une liste de dicts {'name': str}"""
+            if not auth:
+                return []
+            if isinstance(auth, str):
+                return [{"name": auth}]
+            if isinstance(auth, dict):
+                return [auth]
+            if isinstance(auth, list):
+                normed = []
+                for a in auth:
+                    if isinstance(a, str):
+                        normed.append({"name": a})
+                    elif isinstance(a, dict):
+                        normed.append(a)
+                return normed
+            return []
+
+        def normalize_institutions(inst):
+            """Garantit une liste de dicts {'name': str}"""
+            if not inst:
+                return []
+            if isinstance(inst, str):
+                return [{"name": inst}]
+            if isinstance(inst, dict):
+                return [inst]
+            if isinstance(inst, list):
+                normed = []
+                for i in inst:
+                    if isinstance(i, str):
+                        normed.append({"name": i})
+                    elif isinstance(i, dict):
+                        normed.append(i)
+                return normed
+            return []
+
+        # Appliquer la normalisation à toutes les publications
+        for pub in pubs_to_export:
+            pub["authors"] = normalize_authors(pub.get("authors", []))
+            pub["institutions"] = normalize_institutions(pub.get("institutions", []))
+
+
         # 3) Génération du ZIP
         try:
             with st.spinner("Génération du ZIP en cours..."):
