@@ -662,6 +662,19 @@ def main():
                 pub["authors"] = _ensure_authors_struct(pub.get("authors", []))
                 pub["institutions"] = _ensure_institutions_struct(pub.get("institutions", []))
 
+        # --- Debugging utile avant le clic ZIP ---
+        st.write("DEBUG: taille openalex_publications_raw:", len(st.session_state.get('openalex_publications_raw', [])))
+        if st.session_state.get('openalex_publications_raw'):
+            st.json({
+                "oa_sample_0": {
+                    "doi": st.session_state['openalex_publications_raw'][0].get('doi'),
+                    "title": st.session_state['openalex_publications_raw'][0].get('Title')
+                }
+            })
+        st.write("DEBUG: nombre de rows last_df:", len(last_df))
+        if 'Statut_HAL' in last_df.columns:
+            st.write("DEBUG: répartition des statuts:", last_df['Statut_HAL'].value_counts().to_dict())
+
         # Unique visible button (génère le ZIP)
         if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
