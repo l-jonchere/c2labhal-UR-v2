@@ -678,22 +678,23 @@ def main():
         # Unique visible button (génère le ZIP)
         if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
-            # 1) Injecter auteurs/institutions depuis OpenAlex si disponibles
-            if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                oa_map = {
-                    (p.get('doi') or "").strip().lower(): p
-                    for p in st.session_state['openalex_publications_raw']
-                    if p.get('doi')
-                }
-                for pub in pubs_to_export:
-                    doi = (pub.get('doi') or "").strip().lower()
-                    if doi and doi in oa_map:
-                        oa_entry = oa_map[doi]
-                        pub['authors'] = oa_entry.get('authors', [])
-                        pub['institutions'] = oa_entry.get('institutions', [])
-                st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
-            else:
-                st.info("ℹ️ Pas de données OpenAlex en session — les XML pourront être sans auteurs.")
+            # 1bis) Injecter auteurs/institutions APRÈS filtrage (DOI normalisé)
+            oa_map = { normalize_doi(p.get('doi')): p for p in st.session_state.get('openalex_publications_raw', []) if p.get('doi') }
+            
+            matched = 0
+            for pub in pubs_to_export:
+                doi_pub = normalize_doi(pub.get('doi'))
+                if doi_pub and doi_pub in oa_map:
+                    oa_entry = oa_map[doi_pub]
+                    pub['authors'] = oa_entry.get('authors') or []
+                    pub['institutions'] = oa_entry.get('institutions') or []
+                    matched += 1
+                else:
+                    pub['authors'] = pub.get('authors') or []
+                    pub['institutions'] = pub.get('institutions') or []
+            
+            st.write(f"DEBUG injection correspondances DOI trouvées: {matched} / {len(pubs_to_export)}")
+
 
             # 2) Sanitize structures
             for pub in pubs_to_export:
