@@ -618,8 +618,8 @@ def main():
         else:
             st.info("⚠️ Aucune recherche en session. Lancez d'abord la recherche.")
 
-progress_bar_rennes.progress(100)
-progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
+        progress_bar_rennes.progress(100)
+        progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
 
 
 
