@@ -1023,3 +1023,94 @@ def extract_authors_from_openalex_json(openalex_json):
 
     return authors_list
 """
+
+# --------- Merge OpenAlex authors/institutions safely (placer ici) ----------
+def normalize_doi_for_matching(d):
+    if not d:
+        return ""
+    s = str(d).strip().lower()
+    for prefix in ("https://doi.org/", "http://doi.org/", "doi:", "doi.org/"):
+        s = s.replace(prefix, "")
+    return s
+
+def normalize_title_for_matching(t):
+    if not t:
+        return ""
+    s = str(t).strip().lower()
+    s = re.sub(r'\s+', ' ', s)                   # collapse spaces
+    s = re.sub(r'[^\w\s]', '', s)                # remove punctuation
+    return s
+
+def merge_openalex_into_df(result_df, openalex_enriched_list, key_do_merge_to_session=True):
+    """
+    result_df: DataFrame (les résultats finaux)
+    openalex_enriched_list: liste de dicts produits par enrich_with_openalex_authors(...)
+       chaque dict doit contenir 'doi' et/ou 'Title' et les champs 'authors'/'institutions'
+    Retour: (new_df, diagnostics_dict)
+    - new_df: DataFrame identique sauf que authors/institutions sont posés quand match ok
+    - diagnostics_dict: infos de debug
+    """
+    if result_df is None or result_df.empty:
+        return result_df, {"error": "result_df vide"}
+
+    # Build maps from OpenAlex enriched
+    oa_by_doi = {}
+    oa_by_title = {}
+    for p in openalex_enriched_list or []:
+        doi = normalize_doi_for_matching(p.get("doi"))
+        title = normalize_title_for_matching(p.get("Title") or p.get("title"))
+        if doi:
+            oa_by_doi.setdefault(doi, p)
+        if title:
+            # keep first or last; that's fine for diagnostics
+            oa_by_title.setdefault(title, p)
+
+    matched_by_doi = []
+    matched_by_title = []
+    not_matched = []
+
+    new_records = []
+    for rec in result_df.to_dict(orient="records"):
+        rec_copy = dict(rec)  # work on a copy
+        rec_doi = normalize_doi_for_matching(rec_copy.get("doi"))
+        rec_title = normalize_title_for_matching(rec_copy.get("Title") or rec_copy.get("title"))
+        matched = False
+
+        # try DOI first
+        if rec_doi and rec_doi in oa_by_doi:
+            oa = oa_by_doi[rec_doi]
+            rec_copy["authors"] = oa.get("authors", []) or []
+            rec_copy["institutions"] = oa.get("institutions", []) or []
+            matched_by_doi.append(rec_copy.get("Title", "")[:120])
+            matched = True
+        # else try title fallback
+        elif rec_title and rec_title in oa_by_title:
+            oa = oa_by_title[rec_title]
+            rec_copy["authors"] = oa.get("authors", []) or []
+            rec_copy["institutions"] = oa.get("institutions", []) or []
+            matched_by_title.append(rec_copy.get("Title", "")[:120])
+            matched = True
+        else:
+            # ensure fields exist (empty lists)
+            rec_copy["authors"] = rec_copy.get("authors") or []
+            rec_copy["institutions"] = rec_copy.get("institutions") or []
+            not_matched.append(rec_copy.get("Title", "")[:120])
+
+        new_records.append(rec_copy)
+
+    new_df = pd.DataFrame(new_records)
+
+    diagnostics = {
+        "openalex_count": len(openalex_enriched_list or []),
+        "total_records": len(result_df),
+        "matched_by_doi": len(matched_by_doi),
+        "matched_by_title": len(matched_by_title),
+        "not_matched": len(not_matched),
+        "examples_matched_by_doi": matched_by_doi[:5],
+        "examples_matched_by_title": matched_by_title[:5],
+        "examples_not_matched": not_matched[:5],
+        "oa_by_doi_keys_sample": list(oa_by_doi.keys())[:5],
+    }
+
+    return new_df, diagnostics
+
