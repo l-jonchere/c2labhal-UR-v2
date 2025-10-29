@@ -14,7 +14,7 @@ from utils import (
 )
 
 # Importer la génération ZIP / XML (hal_xml_export.py)
-from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json, _safe_text, _ensure_list
+from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json, _safe_text, _ensure_list, normalize_doi
 
 # --- Définition de la liste des laboratoires (spécifique à cette application) ---
 labos_list_rennes = [
@@ -697,14 +697,7 @@ def main():
 
             # 🔧 Correctif : injection systématique auteurs/institutions APRÈS filtrage
             if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-                def normalize_doi(d):
-                    if not d:
-                        return ""
-                    s = str(d).strip().lower()
-                    for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                        s = s.replace(prefix, "")
-                    return s
-            
+
                 oa_map = {normalize_doi(p.get("doi")): p for p in st.session_state["openalex_publications_raw"] if p.get("doi")}
                 matched = 0
                 for pub in pubs_to_export:
