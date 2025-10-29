@@ -695,6 +695,28 @@ def main():
             
             st.write(f"DEBUG injection correspondances DOI trouvées: {matched} / {len(pubs_to_export)}")
 
+            # 🔧 Correctif : injection systématique auteurs/institutions APRÈS filtrage
+            if 'openalex_publications_raw' in st.session_state and pubs_to_export:
+                def normalize_doi(d):
+                    if not d:
+                        return ""
+                    s = str(d).strip().lower()
+                    for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                        s = s.replace(prefix, "")
+                    return s
+            
+                oa_map = {normalize_doi(p.get("doi")): p for p in st.session_state["openalex_publications_raw"] if p.get("doi")}
+                matched = 0
+                for pub in pubs_to_export:
+                    doi = normalize_doi(pub.get("doi"))
+                    if doi and doi in oa_map:
+                        oa_entry = oa_map[doi]
+                        pub["authors"] = oa_entry.get("authors", [])
+                        pub["institutions"] = oa_entry.get("institutions", [])
+                        matched += 1
+                st.info(f"🔄 Auteurs/affiliations réinjectés pour {matched} notices filtrées sur {len(pubs_to_export)}.")
+
+
 
             # 2) Sanitize structures
             for pub in pubs_to_export:
