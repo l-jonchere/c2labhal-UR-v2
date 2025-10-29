@@ -527,77 +527,77 @@ def main():
         # -----------------------
 
         def _ensure_authors_struct(auth_field):
-        """
-        Transforme n'importe quelle forme de 'authors' en liste normalisée :
-        [{'name':..., 'orcid':..., 'raw_affiliations':[...]}]
-        """
-        import json
+            """
+            Transforme n'importe quelle forme de 'authors' en liste normalisée :
+            [{'name':..., 'orcid':..., 'raw_affiliations':[...]}]
+            """
+            import json
 
-        # Cas vide
-        if not auth_field:
+            # Cas vide
+            if not auth_field:
+                return []
+
+            # Si c'est déjà une liste de dicts
+            if isinstance(auth_field, list):
+                clean_list = []
+                for a in auth_field:
+                    if isinstance(a, dict):
+                        clean_list.append({
+                            "name": _safe_text(a.get("name", "")),
+                            "orcid": _safe_text(a.get("orcid", "")),
+                            "raw_affiliations": _ensure_list(a.get("raw_affiliations"))
+                        })
+                    elif isinstance(a, str):
+                        # cas étrange : liste de strings
+                        clean_list.append({"name": _safe_text(a), "orcid": "", "raw_affiliations": []})
+                return clean_list
+
+            # Si c'est une chaîne JSON ou une string quelconque
+            if isinstance(auth_field, str):
+                try:
+                    parsed = json.loads(auth_field)
+                    return _ensure_authors_struct(parsed)
+                except Exception:
+                    # plain string (ex: "John Doe, Jane Smith")
+                    parts = [p.strip() for p in auth_field.split(",") if p.strip()]
+                    return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
+
+            # Sinon : cas inattendu (dict unique, None, etc.)
+            if isinstance(auth_field, dict):
+                return [_ensure_authors_struct(auth_field)]
             return []
-
-        # Si c'est déjà une liste de dicts
-        if isinstance(auth_field, list):
-            clean_list = []
-            for a in auth_field:
-                if isinstance(a, dict):
-                    clean_list.append({
-                        "name": _safe_text(a.get("name", "")),
-                        "orcid": _safe_text(a.get("orcid", "")),
-                        "raw_affiliations": _ensure_list(a.get("raw_affiliations"))
-                    })
-                elif isinstance(a, str):
-                    # cas étrange : liste de strings
-                    clean_list.append({"name": _safe_text(a), "orcid": "", "raw_affiliations": []})
-            return clean_list
-
-        # Si c'est une chaîne JSON ou une string quelconque
-        if isinstance(auth_field, str):
-            try:
-                parsed = json.loads(auth_field)
-                return _ensure_authors_struct(parsed)
-            except Exception:
-                # plain string (ex: "John Doe, Jane Smith")
-                parts = [p.strip() for p in auth_field.split(",") if p.strip()]
-                return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
-
-        # Sinon : cas inattendu (dict unique, None, etc.)
-        if isinstance(auth_field, dict):
-            return [_ensure_authors_struct(auth_field)]
-        return []
 
         def _ensure_institutions_struct(inst_field):
-        """
-        Retourne une liste de dicts d'institutions {'display_name','ror','type','country'}.
-        Gère list/dict/str.
-        """
-        if inst_field is None:
-            return []
-        if isinstance(inst_field, list):
-            cleaned = []
-            for it in inst_field:
-                if isinstance(it, dict):
-                    cleaned.append({
-                        "display_name": _safe_text(it.get("display_name", "")).strip(),
-                        "ror": _safe_text(it.get("ror", "")).strip(),
-                        "type": it.get("type", "institution"),
-                        "country": it.get("country", "")
-                    })
-                elif isinstance(it, str):
-                    cleaned.append({"display_name": it.strip(), "ror": "", "type": "institution", "country": ""})
-            return cleaned
-        if isinstance(inst_field, dict):
-            return [_ensure_institutions_struct([inst_field])[0]]
-        # str
-        s = str(inst_field).strip()
-        if not s:
-            return []
-        # si c'est 'display_name|ror' ou 'ror|display_name' possible split
-        if '|' in s:
-            parts = [p.strip() for p in s.split('|')]
-            return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
-        return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
+            """
+            Retourne une liste de dicts d'institutions {'display_name','ror','type','country'}.
+            Gère list/dict/str.
+            """
+            if inst_field is None:
+                return []
+            if isinstance(inst_field, list):
+                cleaned = []
+                for it in inst_field:
+                    if isinstance(it, dict):
+                        cleaned.append({
+                            "display_name": _safe_text(it.get("display_name", "")).strip(),
+                            "ror": _safe_text(it.get("ror", "")).strip(),
+                            "type": it.get("type", "institution"),
+                            "country": it.get("country", "")
+                        })
+                    elif isinstance(it, str):
+                        cleaned.append({"display_name": it.strip(), "ror": "", "type": "institution", "country": ""})
+                return cleaned
+            if isinstance(inst_field, dict):
+                return [_ensure_institutions_struct([inst_field])[0]]
+            # str
+            s = str(inst_field).strip()
+            if not s:
+                return []
+            # si c'est 'display_name|ror' ou 'ror|display_name' possible split
+            if '|' in s:
+                parts = [p.strip() for p in s.split('|')]
+                return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
+            return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
 
         # -----------------------
         # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
