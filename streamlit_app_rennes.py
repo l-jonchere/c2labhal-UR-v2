@@ -281,46 +281,46 @@ def main():
 
                     # 🧩 ---- Bloc d’enrichissement à insérer ici ----
                     def enrich_with_openalex_authors(openalex_results):
-                    """
-                    openalex_results : liste d'objets 'work' retournés par get_openalex_data (ou un dict)
-                    Retourne une liste de dicts minima: Title, doi, id, authors, institutions, Data source, Date
-                    Ne fait **aucun** filtrage — renvoie une entrée par work reçu.
-                    """
-                    publications = []
-                    for pub in openalex_results:
-                        try:
-                            # pub est le dict 'work' d'OpenAlex ; extract_authors_from_openalex_json sait l'accepter
-                            authors_data = extract_authors_from_openalex_json(pub) or []
-                        except Exception as e:
-                            st.warning(f"Erreur dans extract_authors_from_openalex_json pour {pub.get('id','?')}: {e}")
-                            authors_data = []
-
-                        # construire institutions à partir des raw_affiliations extraites (unique)
-                        institutions = []
-                        for a in authors_data:
-                            for aff in a.get("raw_affiliations", []) or []:
-                                institutions.append({"display_name": _safe_text(aff), "type": "institution"})
-
-                        # dédupliquer institutions (simple)
-                        unique_insts = []
-                        seen = set()
-                        for inst in institutions:
-                            key = (inst.get("display_name","").strip().lower(), inst.get("type",""))
-                            if key not in seen:
-                                seen.add(key)
-                                unique_insts.append(inst)
-
-                        publications.append({
-                            "Title": pub.get("title") or pub.get("display_name") or None,
-                            "doi": pub.get("doi") or None,
-                            "id": pub.get("id") or None,
-                            "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
-                            "Date": pub.get("publication_date"),
-                            "authors": authors_data,
-                            "institutions": unique_insts,
-                            "Data source": "openalex"
-                        })
-                    return publications
+                        """
+                        openalex_results : liste d'objets 'work' retournés par get_openalex_data (ou un dict)
+                        Retourne une liste de dicts minima: Title, doi, id, authors, institutions, Data source, Date
+                        Ne fait **aucun** filtrage — renvoie une entrée par work reçu.
+                        """
+                        publications = []
+                        for pub in openalex_results:
+                            try:
+                                # pub est le dict 'work' d'OpenAlex ; extract_authors_from_openalex_json sait l'accepter
+                                authors_data = extract_authors_from_openalex_json(pub) or []
+                            except Exception as e:
+                                st.warning(f"Erreur dans extract_authors_from_openalex_json pour {pub.get('id','?')}: {e}")
+                                authors_data = []
+    
+                            # construire institutions à partir des raw_affiliations extraites (unique)
+                            institutions = []
+                            for a in authors_data:
+                                for aff in a.get("raw_affiliations", []) or []:
+                                    institutions.append({"display_name": _safe_text(aff), "type": "institution"})
+    
+                            # dédupliquer institutions (simple)
+                            unique_insts = []
+                            seen = set()
+                            for inst in institutions:
+                                key = (inst.get("display_name","").strip().lower(), inst.get("type",""))
+                                if key not in seen:
+                                    seen.add(key)
+                                    unique_insts.append(inst)
+    
+                            publications.append({
+                                "Title": pub.get("title") or pub.get("display_name") or None,
+                                "doi": pub.get("doi") or None,
+                                "id": pub.get("id") or None,
+                                "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
+                                "Date": pub.get("publication_date"),
+                                "authors": authors_data,
+                                "institutions": unique_insts,
+                                "Data source": "openalex"
+                            })
+                        return publications
 
 
                     # Application de la fonction d’enrichissement
