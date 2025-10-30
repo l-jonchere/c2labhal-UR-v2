@@ -575,6 +575,46 @@ def main():
         except Exception as e:
             st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
+        # 🧹 Filtrage OpenAlex maintenant que last_result_df est défini
+        if 'openalex_publications_raw' in st.session_state:
+            enriched_publications_rennes = st.session_state['openalex_publications_raw']
+            df_last = pd.DataFrame(st.session_state['last_result_df'])
+        
+            if not df_last.empty and 'Statut_HAL' in df_last.columns:
+                valid_dois = (
+                    df_last[df_last['Statut_HAL'].fillna("").astype(str).isin(
+                        ["Hors HAL", "Dans HAL mais hors de la collection"]
+                    )]['doi']
+                    .dropna()
+                    .astype(str)
+                    .str.lower()
+                    .str.strip()
+                    .tolist()
+                )
+                st.write(f"🎯 {len(valid_dois)} DOI ciblés pour injection OpenAlex (Hors HAL / hors collection).")
+            else:
+                valid_dois = []
+                st.warning("⚠️ Aucune colonne 'Statut_HAL' trouvée dans result_df_rennes.")
+        
+            def normalize_doi(d):
+                if not d:
+                    return ""
+                s = str(d).strip().lower()
+                for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                    s = s.replace(prefix, "")
+                return s
+        
+            filtered_openalex = [
+                p for p in enriched_publications_rennes
+                if normalize_doi(p.get("doi")) in [normalize_doi(d) for d in valid_dois]
+            ]
+        
+            st.session_state['openalex_publications_raw'] = filtered_openalex
+            st.success(f"✅ Filtrage OpenAlex : {len(filtered_openalex)} conservées sur {len(enriched_publications_rennes)} totales.")
+        else:
+            st.info("ℹ️ Données OpenAlex non disponibles, filtrage sauté.")
+
+        
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
