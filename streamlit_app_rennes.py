@@ -10,11 +10,11 @@ from utils import (
     get_scopus_data, get_openalex_data, get_pubmed_data, convert_to_dataframe,
     clean_doi, HalCollImporter, merge_rows_with_sources, get_authors_from_crossref,
     check_df, enrich_w_upw_parallel, add_permissions_parallel, deduce_todo,
-    normalise, normalize_name, get_initial_form, normalize_doi_for_matching, normalize_title_for_matching, merge_openalex_into_df
+    normalise, normalize_name, get_initial_form
 )
 
 # Importer la génération ZIP / XML (hal_xml_export.py)
-from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json, _safe_text, _ensure_list, normalize_doi
+from hal_xml_export import generate_zip_from_xmls, extract_authors_from_openalex_json, _safe_text, _ensure_list
 
 # --- Définition de la liste des laboratoires (spécifique à cette application) ---
 labos_list_rennes = [
@@ -281,43 +281,32 @@ def main():
 
                     # 🧩 ---- Bloc d’enrichissement à insérer ici ----
                     def enrich_with_openalex_authors(openalex_results):
-                        """
-                        openalex_results : liste d'objets 'work' retournés par get_openalex_data (ou un dict)
-                        Retourne une liste de dicts minima: Title, doi, id, authors, institutions, Data source, Date
-                        Ne fait **aucun** filtrage — renvoie une entrée par work reçu.
-                        """
                         publications = []
                         for pub in openalex_results:
                             try:
-                                # pub est le dict 'work' d'OpenAlex ; extract_authors_from_openalex_json sait l'accepter
-                                authors_data = extract_authors_from_openalex_json(pub) or []
+                                authors_data = extract_authors_from_openalex_json(pub)
                             except Exception as e:
-                                st.warning(f"Erreur dans extract_authors_from_openalex_json pour {pub.get('id','?')}: {e}")
+                                st.warning(f"Erreur dans extract_authors_from_openalex_json pour {pub.get('id', 'inconnu')}: {e}")
                                 authors_data = []
-    
-                            # construire institutions à partir des raw_affiliations extraites (unique)
+
+                            st.write(f"OpenAlex: '{pub.get('title', '')[:80]}' → {len(authors_data)} auteurs extraits")
+
                             institutions = []
                             for a in authors_data:
-                                for aff in a.get("raw_affiliations", []) or []:
-                                    institutions.append({"display_name": _safe_text(aff), "type": "institution"})
-    
-                            # dédupliquer institutions (simple)
-                            unique_insts = []
-                            seen = set()
-                            for inst in institutions:
-                                key = (inst.get("display_name","").strip().lower(), inst.get("type",""))
-                                if key not in seen:
-                                    seen.add(key)
-                                    unique_insts.append(inst)
-    
+                                for aff in a.get("raw_affiliations", []):
+                                    institutions.append({
+                                        "display_name": aff,
+                                        "type": "institution"
+                                    })
+                            unique_institutions = [dict(t) for t in {tuple(d.items()) for d in institutions}]
+
                             publications.append({
-                                "Title": pub.get("title") or pub.get("display_name") or None,
-                                "doi": pub.get("doi") or None,
-                                "id": pub.get("id") or None,
+                                "Title": pub.get("title"),
+                                "doi": pub.get("doi"),
                                 "Source title": pub.get("primary_location", {}).get("source", {}).get("display_name"),
                                 "Date": pub.get("publication_date"),
                                 "authors": authors_data,
-                                "institutions": unique_insts,
+                                "institutions": unique_institutions,
                                 "Data source": "openalex"
                             })
                         return publications
@@ -325,54 +314,7 @@ def main():
                     # Application de la fonction d’enrichissement
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
                     st.session_state['openalex_publications_raw'] = enriched_publications_rennes
-                    st.write(f"DEBUG OpenAlex raw count: {len(openalex_data_rennes)} -> enriched: {len(enriched_publications_rennes)}")
-
-                    # -------------------------------
-                    # 🧹 Filtrage des données OpenAlex
-                    # -------------------------------
-                    st.write("🎯 Début du filtrage OpenAlex pour ne garder que les notices HAL à exporter...")
-                    
-                    # Récupère le DataFrame complet depuis la session (équivalent de result_df_rennes)
-                    df_last = pd.DataFrame(st.session_state.get('last_result_df', []))
-                    
-                    if not df_last.empty and 'Statut_HAL' in df_last.columns:
-                        # Liste des DOI associés aux statuts cibles
-                        valid_dois = (
-                            df_last[df_last['Statut_HAL'].fillna("").astype(str).isin(
-                                ["Hors HAL", "Dans HAL mais hors de la collection"]
-                            )]['doi']
-                            .dropna()
-                            .astype(str)
-                            .str.lower()
-                            .str.strip()
-                            .tolist()
-                        )
-                        st.write(f"🎯 {len(valid_dois)} DOI ciblés pour injection OpenAlex (Hors HAL ou hors de la collection).")
-                    else:
-                        valid_dois = []
-                        st.warning("⚠️ Aucune donnée 'Statut_HAL' trouvée dans last_result_df — filtrage ignoré.")
-                    
-                    # Fonction utilitaire pour normaliser les DOI
-                    def normalize_doi(d):
-                        if not d:
-                            return ""
-                        s = str(d).strip().lower()
-                        for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                            s = s.replace(prefix, "")
-                        return s
-                    
-                    # Filtrer la liste OpenAlex enrichie
-                    filtered_openalex = [
-                        p for p in enriched_publications_rennes
-                        if normalize_doi(p.get("doi")) in [normalize_doi(d) for d in valid_dois]
-                    ]
-                    
-                    st.write(f"✅ Filtrage OpenAlex effectué : {len(filtered_openalex)} publications conservées sur {len(enriched_publications_rennes)} totales.")
-                    
-                    # Et c’est cette version filtrée qu’on conserve en session
-                    st.session_state['openalex_publications_raw'] = filtered_openalex
-
-                    st.json(enriched_publications_rennes[:1])  # inspecter 1er élément
+                    st.info(f"✅ Données OpenAlex enrichies et stockées ({len(enriched_publications_rennes)} publications)")
 
                     openalex_df_rennes = pd.DataFrame(enriched_publications_rennes)
                     st.write("🧩 Données OpenAlex enrichies :", openalex_df_rennes.head(2))
@@ -556,17 +498,6 @@ def main():
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
-
-
-        # --- Fusion OpenAlex SAFE (placer ici, avant st.session_state save) ---
-        openalex_enriched = st.session_state.get("openalex_publications_raw", [])
-        if openalex_enriched:
-            result_df_rennes, diag = merge_openalex_into_df(result_df_rennes, openalex_enriched)
-            st.write("🔎 Diagnostics merge OpenAlex → DataFrame :")
-            st.json(diag)
-        else:
-            st.info("ℹ️ Pas de données OpenAlex en session — pas de fusion effectuée.")
-        
         # --- Sauvegarde persistante des résultats pour permettre les actions après rerun ---
         try:
             st.session_state['last_result_df'] = result_df_rennes.to_dict(orient='records')
@@ -575,46 +506,6 @@ def main():
         except Exception as e:
             st.warning(f"Impossible de sauvegarder les résultats en session: {e}")
 
-        # 🧹 Filtrage OpenAlex maintenant que last_result_df est défini
-        if 'openalex_publications_raw' in st.session_state:
-            enriched_publications_rennes = st.session_state['openalex_publications_raw']
-            df_last = pd.DataFrame(st.session_state['last_result_df'])
-        
-            if not df_last.empty and 'Statut_HAL' in df_last.columns:
-                valid_dois = (
-                    df_last[df_last['Statut_HAL'].fillna("").astype(str).isin(
-                        ["Hors HAL", "Dans HAL mais hors de la collection"]
-                    )]['doi']
-                    .dropna()
-                    .astype(str)
-                    .str.lower()
-                    .str.strip()
-                    .tolist()
-                )
-                st.write(f"🎯 {len(valid_dois)} DOI ciblés pour injection OpenAlex (Hors HAL / hors collection).")
-            else:
-                valid_dois = []
-                st.warning("⚠️ Aucune colonne 'Statut_HAL' trouvée dans result_df_rennes.")
-        
-            def normalize_doi(d):
-                if not d:
-                    return ""
-                s = str(d).strip().lower()
-                for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                    s = s.replace(prefix, "")
-                return s
-        
-            filtered_openalex = [
-                p for p in enriched_publications_rennes
-                if normalize_doi(p.get("doi")) in [normalize_doi(d) for d in valid_dois]
-            ]
-        
-            st.session_state['openalex_publications_raw'] = filtered_openalex
-            st.success(f"✅ Filtrage OpenAlex : {len(filtered_openalex)} conservées sur {len(enriched_publications_rennes)} totales.")
-        else:
-            st.info("ℹ️ Données OpenAlex non disponibles, filtrage sauté.")
-
-        
         # --- Export XML HAL (préparation) ---
         st.write("Aperçu (head) des résultats :", result_df_rennes.head())
         st.write(f"Total lignes result_df_rennes : {len(result_df_rennes)}")
@@ -708,7 +599,6 @@ def main():
                 return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
             return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
 
-
         # -----------------------
         # Panneau minimal : un seul bouton visible "Télécharger le ZIP"
         # -----------------------
@@ -723,6 +613,14 @@ def main():
             # 🧠 Étape 1 : injection OpenAlex pour *toutes* les notices, avant le filtrage
             if 'openalex_publications_raw' in st.session_state:
                 oa_data = st.session_state['openalex_publications_raw']
+
+                def normalize_doi(d):
+                    if not d:
+                        return ""
+                    s = str(d).strip().lower()
+                    for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                        s = s.replace(prefix, "")
+                    return s
 
                 oa_map = {normalize_doi(p.get("doi")): p for p in oa_data if p.get("doi")}
                 found = 0
@@ -758,54 +656,25 @@ def main():
                 pub["authors"] = _ensure_authors_struct(pub.get("authors", []))
                 pub["institutions"] = _ensure_institutions_struct(pub.get("institutions", []))
 
-        # --- Debugging utile avant le clic ZIP ---
-        st.write("DEBUG: taille openalex_publications_raw:", len(st.session_state.get('openalex_publications_raw', [])))
-        if st.session_state.get('openalex_publications_raw'):
-            st.json({
-                "oa_sample_0": {
-                    "doi": st.session_state['openalex_publications_raw'][0].get('doi'),
-                    "title": st.session_state['openalex_publications_raw'][0].get('Title')
-                }
-            })
-        st.write("DEBUG: nombre de rows last_df:", len(last_df))
-        if 'Statut_HAL' in last_df.columns:
-            st.write("DEBUG: répartition des statuts:", last_df['Statut_HAL'].value_counts().to_dict())
-
         # Unique visible button (génère le ZIP)
         if st.button(f"⬇️ Télécharger le fichier ZIP des XML HAL ({len(pubs_to_export)})", key=f"dlzip_{last_collection}"):
 
-            # 1bis) Injecter auteurs/institutions APRÈS filtrage (DOI normalisé)
-            oa_map = { normalize_doi(p.get('doi')): p for p in st.session_state.get('openalex_publications_raw', []) if p.get('doi') }
-            
-            matched = 0
-            for pub in pubs_to_export:
-                doi_pub = normalize_doi(pub.get('doi'))
-                if doi_pub and doi_pub in oa_map:
-                    oa_entry = oa_map[doi_pub]
-                    pub['authors'] = oa_entry.get('authors') or []
-                    pub['institutions'] = oa_entry.get('institutions') or []
-                    matched += 1
-                else:
-                    pub['authors'] = pub.get('authors') or []
-                    pub['institutions'] = pub.get('institutions') or []
-            
-            st.write(f"DEBUG injection correspondances DOI trouvées: {matched} / {len(pubs_to_export)}")
-
-            # 🔧 Correctif : injection systématique auteurs/institutions APRÈS filtrage
+            # 1) Injecter auteurs/institutions depuis OpenAlex si disponibles
             if 'openalex_publications_raw' in st.session_state and pubs_to_export:
-
-                oa_map = {normalize_doi(p.get("doi")): p for p in st.session_state["openalex_publications_raw"] if p.get("doi")}
-                matched = 0
+                oa_map = {
+                    (p.get('doi') or "").strip().lower(): p
+                    for p in st.session_state['openalex_publications_raw']
+                    if p.get('doi')
+                }
                 for pub in pubs_to_export:
-                    doi = normalize_doi(pub.get("doi"))
+                    doi = (pub.get('doi') or "").strip().lower()
                     if doi and doi in oa_map:
                         oa_entry = oa_map[doi]
-                        pub["authors"] = oa_entry.get("authors", [])
-                        pub["institutions"] = oa_entry.get("institutions", [])
-                        matched += 1
-                st.info(f"🔄 Auteurs/affiliations réinjectés pour {matched} notices filtrées sur {len(pubs_to_export)}.")
-
-
+                        pub['authors'] = oa_entry.get('authors', [])
+                        pub['institutions'] = oa_entry.get('institutions', [])
+                st.success("✅ Auteurs / affiliations injectés depuis OpenAlex (si trouvés).")
+            else:
+                st.info("ℹ️ Pas de données OpenAlex en session — les XML pourront être sans auteurs.")
 
             # 2) Sanitize structures
             for pub in pubs_to_export:
@@ -904,6 +773,85 @@ def main():
 
         progress_bar_rennes.progress(100)
         progress_text_area_rennes.success(f"🎉 Traitement pour {collection_a_chercher_rennes} terminé avec succès !")
+
+
+
+# -----------------------
+# Fonctions utilitaires pour assainir les auteurs/institutions
+# -----------------------
+
+def _ensure_authors_struct(auth_field):
+    """
+    Transforme n'importe quelle forme de 'authors' en liste normalisée :
+    [{'name':..., 'orcid':..., 'raw_affiliations':[...]}]
+    """
+    import json
+
+    # Cas vide
+    if not auth_field:
+        return []
+
+    # Si c'est déjà une liste de dicts
+    if isinstance(auth_field, list):
+        clean_list = []
+        for a in auth_field:
+            if isinstance(a, dict):
+                clean_list.append({
+                    "name": _safe_text(a.get("name", "")),
+                    "orcid": _safe_text(a.get("orcid", "")),
+                    "raw_affiliations": _ensure_list(a.get("raw_affiliations"))
+                })
+            elif isinstance(a, str):
+                # cas étrange : liste de strings
+                clean_list.append({"name": _safe_text(a), "orcid": "", "raw_affiliations": []})
+        return clean_list
+
+    # Si c'est une chaîne JSON ou une string quelconque
+    if isinstance(auth_field, str):
+        try:
+            parsed = json.loads(auth_field)
+            return _ensure_authors_struct(parsed)
+        except Exception:
+            # plain string (ex: "John Doe, Jane Smith")
+            parts = [p.strip() for p in auth_field.split(",") if p.strip()]
+            return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
+
+    # Sinon : cas inattendu (dict unique, None, etc.)
+    if isinstance(auth_field, dict):
+        return [_ensure_authors_struct(auth_field)]
+    return []
+
+def _ensure_institutions_struct(inst_field):
+    """
+    Retourne une liste de dicts d'institutions {'display_name','ror','type','country'}.
+    Gère list/dict/str.
+    """
+    if inst_field is None:
+        return []
+    if isinstance(inst_field, list):
+        cleaned = []
+        for it in inst_field:
+            if isinstance(it, dict):
+                cleaned.append({
+                    "display_name": _safe_text(it.get("display_name", "")).strip(),
+                    "ror": _safe_text(it.get("ror", "")).strip(),
+                    "type": it.get("type", "institution"),
+                    "country": it.get("country", "")
+                })
+            elif isinstance(it, str):
+                cleaned.append({"display_name": it.strip(), "ror": "", "type": "institution", "country": ""})
+        return cleaned
+    if isinstance(inst_field, dict):
+        return [_ensure_institutions_struct([inst_field])[0]]
+    # str
+    s = str(inst_field).strip()
+    if not s:
+        return []
+    # si c'est 'display_name|ror' ou 'ror|display_name' possible split
+    if '|' in s:
+        parts = [p.strip() for p in s.split('|')]
+        return [{"display_name": parts[0], "ror": parts[1] if len(parts)>1 else "", "type": "institution", "country": ""}]
+    return [{"display_name": s, "ror": "", "type": "institution", "country": ""}]
 
 if __name__ == "__main__":
     main()
