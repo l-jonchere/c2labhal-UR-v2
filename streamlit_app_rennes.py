@@ -322,6 +322,52 @@ def main():
                             })
                         return publications
 
+                    # -------------------------------
+                    # 🧹 Filtrage des données OpenAlex
+                    # -------------------------------
+                    st.write("🎯 Début du filtrage OpenAlex pour ne garder que les notices HAL à exporter...")
+                    
+                    # Récupère le DataFrame complet depuis la session (équivalent de result_df_rennes)
+                    df_last = pd.DataFrame(st.session_state.get('last_result_df', []))
+                    
+                    if not df_last.empty and 'Statut_HAL' in df_last.columns:
+                        # Liste des DOI associés aux statuts cibles
+                        valid_dois = (
+                            df_last[df_last['Statut_HAL'].fillna("").astype(str).isin(
+                                ["Hors HAL", "Dans HAL mais hors de la collection"]
+                            )]['doi']
+                            .dropna()
+                            .astype(str)
+                            .str.lower()
+                            .str.strip()
+                            .tolist()
+                        )
+                        st.write(f"🎯 {len(valid_dois)} DOI ciblés pour injection OpenAlex (Hors HAL ou hors de la collection).")
+                    else:
+                        valid_dois = []
+                        st.warning("⚠️ Aucune donnée 'Statut_HAL' trouvée dans last_result_df — filtrage ignoré.")
+                    
+                    # Fonction utilitaire pour normaliser les DOI
+                    def normalize_doi(d):
+                        if not d:
+                            return ""
+                        s = str(d).strip().lower()
+                        for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
+                            s = s.replace(prefix, "")
+                        return s
+                    
+                    # Filtrer la liste OpenAlex enrichie
+                    filtered_openalex = [
+                        p for p in enriched_publications_rennes
+                        if normalize_doi(p.get("doi")) in [normalize_doi(d) for d in valid_dois]
+                    ]
+                    
+                    st.write(f"✅ Filtrage OpenAlex effectué : {len(filtered_openalex)} publications conservées sur {len(enriched_publications_rennes)} totales.")
+                    
+                    # Et c’est cette version filtrée qu’on conserve en session
+                    st.session_state['openalex_publications_raw'] = filtered_openalex
+
+                    
                     # Application de la fonction d’enrichissement
                     enriched_publications_rennes = enrich_with_openalex_authors(openalex_data_rennes)
                     st.session_state['openalex_publications_raw'] = enriched_publications_rennes
@@ -510,46 +556,6 @@ def main():
         st.success(f"Déduction des actions et traitement des auteurs pour {collection_a_chercher_rennes} terminés.")
         
         st.dataframe(result_df_rennes)
-
-        # -------------------------------
-        # 🧹 Filtrage des données OpenAlex
-        # -------------------------------
-        
-        # On ne garde que les DOI présents dans les publications HAL "hors collection"
-        if 'Statut_HAL' in result_df_rennes.columns:
-            valid_dois = (
-                result_df_rennes[result_df_rennes['Statut_HAL'].isin(
-                    ["Hors HAL", "Dans HAL mais hors de la collection"]
-                )]['doi']
-                .dropna()
-                .astype(str)
-                .str.lower()
-                .str.strip()
-                .tolist()
-            )
-        else:
-            valid_dois = []
-        
-        st.write(f"🎯 {len(valid_dois)} DOI ciblés pour injection OpenAlex.")
-        
-        def normalize_doi(d):
-            if not d:
-                return ""
-            s = str(d).strip().lower()
-            for prefix in ["https://doi.org/", "http://doi.org/", "doi:", "doi.org/"]:
-                s = s.replace(prefix, "")
-            return s
-        
-        # Filtrer la liste OpenAlex enrichie
-        filtered_openalex = [
-            p for p in enriched_publications_rennes
-            if normalize_doi(p.get("doi")) in [normalize_doi(d) for d in valid_dois]
-        ]
-        
-        st.write(f"✅ Filtrage OpenAlex effectué : {len(filtered_openalex)} publications conservées sur {len(enriched_publications_rennes)}.")
-        
-        # Et c’est cette version qu’on garde en session
-        st.session_state['openalex_publications_raw'] = filtered_openalex
 
 
         # --- Fusion OpenAlex SAFE (placer ici, avant st.session_state save) ---
