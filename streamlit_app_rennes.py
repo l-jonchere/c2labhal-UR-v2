@@ -420,20 +420,133 @@ def main():
         result_df_rennes = check_df(final_merged_data_rennes.copy(), coll_df_hal_rennes, progress_bar_st=progress_bar_rennes, progress_text_st=progress_text_area_rennes)
         st.success(f"Comparaison HAL pour {collection_a_chercher_rennes} terminée.")
 
-        # Filtrage des publications à exporter (seulement celles hors HAL ou hors collection)
+        # --- Bloc d'enrichissement + filtrage + sauvegarde en session (placer ici, juste après la construction de result_df_rennes) ---
+
+        def _normalize_doi_for_map(v):
+            if not v:
+                return ""
+            s = str(v).strip().lower()
+            for prefix in ("https://doi.org/", "http://doi.org/", "doi:", "doi.org/"):
+                s = s.replace(prefix, "")
+            return s
+        
+        # 1) Prépare la map OpenAlex (si disponible)
+        openalex_list = st.session_state.get('openalex_publications_raw', []) or []
+        oa_map = {}
+        if openalex_list:
+            for p in openalex_list:
+                d = _normalize_doi_for_map(p.get('doi'))
+                if d:
+                    oa_map[d] = p
+        
+        st.write(f"DEBUG: OpenAlex en session: {len(openalex_list)} entrées ; map doi keys: {len(oa_map)}")
+        
+        # 2) Injecte auteurs/institutions dans result_df_rennes (créé plus haut)
+        merged_records = []
+        enriched_count = 0
+        for rec in result_df_rennes.to_dict(orient='records'):
+            doi_norm = _normalize_doi_for_map(rec.get('doi'))
+            # par défaut, mettre listes vides (évite None)
+            rec['authors'] = []
+            rec['institutions'] = []
+            if doi_norm and doi_norm in oa_map:
+                oa = oa_map[doi_norm]
+                # OA doit contenir 'authors' en list et 'institutions' en list — s'ils sont JSON string on tente de parser
+                rec['authors'] = oa.get('authors') or []
+                rec['institutions'] = oa.get('institutions') or []
+                enriched_count += 1
+            merged_records.append(rec)
+        
+        result_df_rennes = pd.DataFrame(merged_records)
+        st.write(f"DEBUG: fusion OpenAlex -> result_df_rennes : {enriched_count} lignes enrichies sur {len(result_df_rennes)}")
+        
+        # 3) Filtrage final: ne garder QUE les publications hors HAL / hors collection
         if 'Statut_HAL' in result_df_rennes.columns:
             mask_non_hal = result_df_rennes['Statut_HAL'].fillna("").astype(str).isin(
                 ["Hors HAL", "Dans HAL mais hors de la collection"]
             )
-            filtered_result_df_rennes = result_df_rennes[mask_non_hal].copy()
-            st.info(f"📦 {len(filtered_result_df_rennes)} publications retenues pour export XML (hors HAL ou hors collection).")
+            filtered_df = result_df_rennes[mask_non_hal].copy()
+            st.info(f"📦 Filtrage: {len(filtered_df)} publications retenues pour export (Statut_HAL hors/ hors-collection).")
         else:
+            filtered_df = result_df_rennes.copy()
             st.warning("⚠️ Colonne 'Statut_HAL' absente — aucun filtrage appliqué.")
-            filtered_result_df_rennes = result_df_rennes.copy()
         
-        # Sauvegarde pour le module d'export
-        st.session_state['last_result_df'] = filtered_result_df_rennes.to_dict(orient="records")
-        st.session_state['last_collection'] = collection_a_chercher_rennes
+        # 4) Sanitize minimal des structures authors/institutions pour éviter erreurs lors du XML
+        def safe_authors_field(a):
+            if not a:
+                return []
+            if isinstance(a, str):
+                try:
+                    import json
+                    parsed = json.loads(a)
+                    a = parsed
+                except Exception:
+                    # si chaîne simple "Nom1; Nom2" -> split virgules
+                    parts = [x.strip() for x in a.replace(';', ',').split(',') if x.strip()]
+                    return [{"name": p, "orcid": "", "raw_affiliations": []} for p in parts]
+            if isinstance(a, dict):
+                return [a]
+            if isinstance(a, list):
+                clean = []
+                for it in a:
+                    if isinstance(it, dict):
+                        clean.append({
+                            "name": _safe_text(it.get("name") or it.get("raw_author_name") or it.get("display_name") or ""),
+                            "orcid": _safe_text(it.get("orcid") or it.get("author", {}).get("orcid") or ""),
+                            "raw_affiliations": _ensure_list(it.get("raw_affiliations") or it.get("raw_affiliation_strings") or it.get("institutions") or [])
+                        })
+                    elif isinstance(it, str):
+                        clean.append({"name": _safe_text(it), "orcid": "", "raw_affiliations": []})
+                return clean
+            return []
+        
+        def safe_insts_field(i):
+            if not i:
+                return []
+            if isinstance(i, str):
+                return [{"display_name": _safe_text(i), "ror": ""}]
+            if isinstance(i, dict):
+                return [ {
+                    "display_name": _safe_text(i.get("display_name", "")),
+                    "ror": _safe_text(i.get("ror", "")),
+                    "type": i.get("type","institution"),
+                    "country": i.get("country","")
+                } ]
+            if isinstance(i, list):
+                clean = []
+                for it in i:
+                    if isinstance(it, dict):
+                        clean.append({
+                            "display_name": _safe_text(it.get("display_name","") or it.get("name","")),
+                            "ror": _safe_text(it.get("ror","")),
+                            "type": it.get("type","institution"),
+                            "country": it.get("country","")
+                        })
+                    elif isinstance(it, str):
+                        clean.append({"display_name": _safe_text(it), "ror": "", "type":"institution", "country":""})
+                return clean
+            return []
+        
+        # Appliquer sanitation sur filtered_df
+        sanitized = []
+        for rec in filtered_df.to_dict(orient='records'):
+            rec['authors'] = safe_authors_field(rec.get('authors'))
+            rec['institutions'] = safe_insts_field(rec.get('institutions'))
+            sanitized.append(rec)
+        filtered_df = pd.DataFrame(sanitized)
+        
+        # 5) Sauvegarde incontournable pour l'export ZIP : on met la version FILTRÉE en session
+        st.session_state['last_result_df_filtered'] = filtered_df.to_dict(orient='records')
+        # on conserve aussi la version complète si besoin
+        st.session_state['last_result_df_full'] = result_df_rennes.to_dict(orient='records')
+        
+        # Debug: afficher 3 éléments (aperçu) — très utile pour vérifier avant d'appuyer sur ZIP
+        if len(filtered_df) > 0:
+            st.write("🔍 Exemple (filtered_df[0]) :")
+            try:
+                st.json(filtered_df.iloc[0].to_dict())
+            except Exception:
+                st.write(filtered_df.iloc[0].to_dict())
 
 
         # --- Étape 7 : Enrichissement Unpaywall ---
