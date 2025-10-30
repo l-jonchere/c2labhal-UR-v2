@@ -420,6 +420,22 @@ def main():
         result_df_rennes = check_df(final_merged_data_rennes.copy(), coll_df_hal_rennes, progress_bar_st=progress_bar_rennes, progress_text_st=progress_text_area_rennes)
         st.success(f"Comparaison HAL pour {collection_a_chercher_rennes} terminée.")
 
+        # Filtrage des publications à exporter (seulement celles hors HAL ou hors collection)
+        if 'Statut_HAL' in result_df_rennes.columns:
+            mask_non_hal = result_df_rennes['Statut_HAL'].fillna("").astype(str).isin(
+                ["Hors HAL", "Dans HAL mais hors de la collection"]
+            )
+            filtered_result_df_rennes = result_df_rennes[mask_non_hal].copy()
+            st.info(f"📦 {len(filtered_result_df_rennes)} publications retenues pour export XML (hors HAL ou hors collection).")
+        else:
+            st.warning("⚠️ Colonne 'Statut_HAL' absente — aucun filtrage appliqué.")
+            filtered_result_df_rennes = result_df_rennes.copy()
+        
+        # Sauvegarde pour le module d'export
+        st.session_state['last_result_df'] = filtered_result_df_rennes.to_dict(orient="records")
+        st.session_state['last_collection'] = collection_a_chercher_rennes
+
+
         # --- Étape 7 : Enrichissement Unpaywall ---
         with st.spinner(f"Enrichissement Unpaywall pour {collection_a_chercher_rennes}..."):
             progress_text_area_rennes.info("Étape 7/9 : Enrichissement Unpaywall...")
